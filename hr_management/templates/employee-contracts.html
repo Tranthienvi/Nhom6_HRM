@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+  <div class="p-6">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-semibold">Hợp đồng nhân viên</h1>
+    <button class="gap-2 flex items-center bg-blue-500 text-white px-4 py-2 rounded">
+      <span>+</span>
+      Thêm hợp đồng
+    </button>
+  </div>
+
+  <div class="mb-6 border rounded">
+    <div class="pb-2 px-4 pt-4">
+      <h2 class="text-base font-medium">Tìm kiếm</h2>
+    </div>
+    <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="space-y-2">
+        <label for="contract-id">Mã hợp đồng</label>
+        <input id="contract-id" placeholder="Nhập mã hợp đồng" class="border px-2 py-1 w-full" />
+      </div>
+      <div class="space-y-2">
+        <label for="employee-name">Tên nhân viên</label>
+        <input id="employee-name" placeholder="Nhập tên nhân viên" class="border px-2 py-1 w-full" />
+      </div>
+      <div class="space-y-2">
+        <label for="contract-type">Loại hợp đồng</label>
+        <input id="contract-type" placeholder="Chọn loại hợp đồng" class="border px-2 py-1 w-full" />
+      </div>
+      <div class="space-y-2">
+        <label for="start-date">Ngày bắt đầu</label>
+        <input id="start-date" type="date" class="border px-2 py-1 w-full" />
+      </div>
+      <div class="space-y-2">
+        <label for="end-date">Ngày kết thúc</label>
+        <input id="end-date" type="date" class="border px-2 py-1 w-full" />
+      </div>
+      <div class="flex items-end">
+        <button class="gap-2 w-full bg-blue-500 text-white px-4 py-2 rounded flex items-center justify-center">
+          <span>🔍</span>
+          Tìm kiếm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex gap-2">
+      <button class="px-4 py-1 border rounded">Tất cả</button>
+      <button class="px-4 py-1 border rounded">Đang hiệu lực</button>
+      <button class="px-4 py-1 border rounded">Hết hạn</button>
+      <button class="px-4 py-1 border rounded">Đã chấm dứt</button>
+    </div>
+    <button class="border rounded px-3 py-1 flex items-center gap-2">⚙️ Lọc</button>
+  </div>
+
+  <div class="border rounded p-6">
+    <div class="flex flex-col items-center justify-center py-10 text-center">
+      <div class="text-gray-300 text-6xl mb-4">📄</div>
+      <p class="text-gray-500 mb-2">Không có dữ liệu hợp đồng</p>
+      <button class="border mt-2 px-4 py-2 flex gap-2 items-center">
+        <span>+</span> Thêm hợp đồng mới
+      </button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

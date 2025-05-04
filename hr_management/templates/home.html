@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Trang chủ - Hệ thống Quản lý Nhân sự{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4">Hệ thống Quản lý Nhân sự</h1>
+            <p class="lead">Chào mừng đến với hệ thống quản lý nhân sự, chấm công và tính lương</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-people me-2"></i>Quản lý Nhân viên</h5>
+                    <p class="card-text">Quản lý thông tin nhân viên, hợp đồng và các dữ liệu liên quan.</p>
+                    <a href="{% url 'employee_list' %}" class="btn btn-primary">Truy cập</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-calendar-check me-2"></i>Chấm công</h5>
+                    <p class="card-text">Quản lý ca làm việc, bảng chấm công và dữ liệu chấm công.</p>
+                    <a href="{% url 'attendance_dashboard' %}" class="btn btn-primary">Truy cập</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-cash-coin me-2"></i>Tiền lương</h5>
+                    <p class="card-text">Quản lý mẫu bảng lương, tính lương và chi trả lương.</p>
+                    <a href="{% url 'payroll_dashboard' %}" class="btn btn-primary">Truy cập</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
