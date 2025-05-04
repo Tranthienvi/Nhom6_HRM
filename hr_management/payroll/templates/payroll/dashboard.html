@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Quản lý tiền lương{% endblock %}
+
+{% block sidebar %}
+<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+    <div class="position-sticky pt-3">
+        {% include 'payroll/sidebar.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Quản lý tiền lương</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Mẫu bảng lương</h5>
+                <a href="{% url 'payroll_template_list' %}" class="btn btn-sm btn-primary">Xem tất cả</a>
+            </div>
+            <div class="card-body">
+                <p>Quản lý các mẫu bảng lương và thành phần lương.</p>
+                <a href="{% url 'payroll_template_create' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-plus"></i> Tạo mẫu bảng lương
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Bảng lương</h5>
+                <a href="{% url 'payroll_list' %}" class="btn btn-sm btn-primary">Xem tất cả</a>
+            </div>
+            <div class="card-body">
+                <p>Quản lý bảng lương và chi trả lương.</p>
+                <a href="{% url 'payroll_create' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-plus"></i> Tạo bảng lương
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Bảng lương gần đây</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Tên bảng lương</th>
+                        <th>Tháng/Năm</th>
+                        <th>Vị trí áp dụng</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payroll in payrolls %}
+                    <tr>
+                        <td>{{ payroll.name }}</td>
+                        <td>{{ payroll.month }}/{{ payroll.year }}</td>
+                        <td>
+                            {% for position in payroll.positions.all %}
+                            <span class="badge bg-info">{{ position.name }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if payroll.status == 'draft' %}
+                            <span class="badge bg-secondary">Bản nháp</span>
+                            {% elif payroll.status == 'pending' %}
+                            <span class="badge bg-warning">Chờ duyệt</span>
+                            {% elif payroll.status == 'approved' %}
+                            <span class="badge bg-success">Đã duyệt</span>
+                            {% elif payroll.status == 'paid' %}
+                            <span class="badge bg-primary">Đã thanh toán</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ payroll.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'payroll_detail' payroll.id %}" class="btn btn-sm btn-info">
+                                <i class="bi bi-eye"></i> Xem
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">Không có bảng lương nào.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

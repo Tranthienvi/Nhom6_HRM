@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Danh sách ca làm việc{% endblock %}
+
+{% block sidebar %}
+<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+    <div class="position-sticky pt-3">
+        {% include 'attendance/sidebar.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Danh sách ca làm việc</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'work_shift_create' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus"></i> Thêm ca làm việc
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Tên ca</th>
+                        <th>Giờ bắt đầu</th>
+                        <th>Giờ kết thúc</th>
+                        <th>Thời gian nghỉ (phút)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shift in work_shifts %}
+                    <tr>
+                        <td>{{ shift.name }}</td>
+                        <td>{{ shift.start_time }}</td>
+                        <td>{{ shift.end_time }}</td>
+                        <td>{{ shift.break_time }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center">Không có ca làm việc nào.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Tạo đợt chi trả lương{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Tạo đợt chi trả lương</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Thông tin chi trả</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.name.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.payment_date.id_for_label }}" class="form-label">{{ form.payment_date.label }}</label>
+                    {{ form.payment_date }}
+                    {% if form.payment_date.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.payment_date.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.description.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                    <a href="{% url 'payroll_detail' pk=payroll.pk %}" class="btn btn-secondary">Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

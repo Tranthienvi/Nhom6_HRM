@@ -1,29 +1,35 @@
-# employees/forms.py
-
 from django import forms
-from .models import Employee, Contract
+from .models import Employee, Contract, WorkHistory, SalaryHistory
+
 
 class EmployeeForm(forms.ModelForm):
     class Meta:
         model = Employee
         fields = [
-            'code', 'first_name', 'last_name', 'gender', 'date_of_birth',
-            'id_number', 'phone', 'email', 'position', 'department',
-            'join_date', 'photo', 'is_active'
+            'code', 'first_name', 'last_name', 'full_name', 'gender', 'date_of_birth', 'id_number',
+            'phone', 'email', 'position', 'department', 'join_date', 'is_active', 'photo', 'labor_status',
+            'employment_type', 'contract_type', 'dependents'
         ]
         widgets = {
-            'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
-            'join_date': forms.DateInput(attrs={'type': 'date'}),
+            'join_date': forms.SelectDateWidget(years=range(2000, 2031)),
         }
+
 
 class ContractForm(forms.ModelForm):
     class Meta:
         model = Contract
-        fields = [
-            'contract_type', 'start_date', 'end_date',
-            'position', 'basic_salary', 'is_active'
-        ]
-        widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
-        }
+        fields = ['contract_type', 'start_date', 'end_date', 'basic_salary', 'position']
+
+
+
+class WorkHistoryForm(forms.ModelForm):
+    class Meta:
+        model = WorkHistory
+        fields = ['company', 'position', 'start_date', 'end_date', 'description']
+
+
+
+class SalaryHistoryForm(forms.ModelForm):
+    class Meta:
+        model = SalaryHistory
+        fields = ['employee', 'effective_date', 'old_salary', 'new_salary', 'reason']

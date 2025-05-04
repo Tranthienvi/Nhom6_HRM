@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Tạo bảng lương{% endblock %}
+
+{% block sidebar %}
+<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+    <div class="position-sticky pt-3">
+        {% include 'payroll/sidebar.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Tạo bảng lương</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'payroll_list' %}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6">
+                    {{ form.name|as_crispy_field }}
+                    {{ form.month|as_crispy_field }}
+                    {{ form.year|as_crispy_field }}
+                    {{ form.template|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.positions|as_crispy_field }}
+                    {{ form.attendance_sheet|as_crispy_field }}
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Lưu</button>
+                <a href="{% url 'payroll_list' %}" class="btn btn-secondary">Hủy</a>
+            </div

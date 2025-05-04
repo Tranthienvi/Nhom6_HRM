@@ -1,0 +1,19 @@
+<!-- payroll_template_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết mẫu bảng lương</title>
+</head>
+<body>
+    <h1>Chi tiết mẫu bảng lương</h1>
+    <p>Tên mẫu bảng lương: {{ payroll_template.name }}</p>
+    <p>Lương: {{ payroll_template.salary }}</p>
+    <p>Thưởng: {{ payroll_template.bonus }}</p>
+    <p>Khấu trừ: {{ payroll_template.deductions }}</p>
+    <p>Ngày hiệu lực: {{ payroll_template.effective_date }}</p>
+
+    <a href="{% url 'payroll_template_list' %}">Quay lại danh sách mẫu bảng lương</a>
+</body>
+</html>

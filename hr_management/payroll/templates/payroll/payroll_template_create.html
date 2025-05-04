@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+  <div class="container mt-4">
+    <h2>Tạo mẫu bảng lương</h2>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.name|as_crispy_field }}
+      {{ form.salary|as_crispy_field }}
+      {{ form.bonus|as_crispy_field }}
+      {{ form.deductions|as_crispy_field }}
+      {{ form.effective_date|as_crispy_field }}
+      <button type="submit" class="btn btn-success mt-3">Lưu</button>
+    </form>
+  </div>
+{% endblock %}

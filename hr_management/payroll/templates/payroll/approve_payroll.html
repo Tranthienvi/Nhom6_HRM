@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Phê duyệt bảng lương{% endblock %}
+
+{% block sidebar %}
+<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+    <div class="position-sticky pt-3">
+        {% include 'payroll/sidebar.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Phê duyệt bảng lương</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'payroll_detail' payroll.id %}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Thông tin bảng lương</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Tên bảng lương:</strong> {{ payroll.name }}</p>
+                <p><strong>Tháng/Năm:</strong> {{ payroll.month }}/{{ payroll.year }}</p>
+                <p><strong>Mẫu bảng lương:</strong> {{ payroll.template.name }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Vị trí áp dụng:</strong>
+                    {% for position in payroll.positions.all %}
+                    <span class="badge bg-info">{{ position.name }}</span>
+                    {% endfor %}
+                </p>
+                <p><strong>Trạng thái hiện tại:</strong>
+                    <span class="badge bg-secondary">Bản nháp</span>
+                </p>
+                <p><strong>Ngày tạo:</strong> {{ payroll.created_at|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="alert alert-warning">
+            <h5 class="alert-heading">Xác nhận phê duyệt</h5>
+            <p>Bạn có chắc chắn muốn phê duyệt bảng lương này không? Sau khi phê duyệt, bảng lương sẽ được chuyển sang trạng thái "Đã duyệt" và sẵn sàng để thanh toán.</p>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="d-flex justify-content-center mt-3">
+                <button type="submit" class="btn btn-success me-2">
+                    <i class="bi bi-check-lg"></i> Xác nhận phê duyệt
+                </button>
+                <a href="{% url 'payroll_detail' payroll.id %}" class="btn btn-secondary">
+                    <i class="bi bi-x"></i> Hủy
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

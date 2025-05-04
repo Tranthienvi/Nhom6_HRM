@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Cập nhật chi tiết chi trả{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Cập nhật chi tiết chi trả</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Thông tin nhân viên</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Mã nhân viên:</strong> {{ payment_detail.payroll_detail.employee.employee_id }}</p>
+                    <p><strong>Họ và tên:</strong> {{ payment_detail.payroll_detail.employee.full_name }}</p>
+                    <p><strong>Đơn vị công tác:</strong> {{ payment_detail.payroll_detail.employee.department.name }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Vị trí:</strong> {{ payment_detail.payroll_detail.employee.position.name }}</p>
+                    <p><strong>Lương thực lĩnh:</strong> {{ payment_detail.payroll_detail.net_salary|floatformat:0 }}</p>
+                    <p><strong>Số phải trả đợt này:</strong> {{ payment_detail.amount_due|floatformat:0 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Thông tin chi trả</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="{{ form.amount_paid.id_for_label }}" class="form-label">{{ form.amount_paid.label }}</label>
+                    {{ form.amount_paid }}
+                    {% if form.amount_paid.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.amount_paid.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.payment_rate.id_for_label }}" class="form-label">{{ form.payment_rate.label }}</label>
+                    {{ form.payment_rate }}
+                    {% if form.payment_rate.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.payment_rate.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.debt_payment.id_for_label }}" class="form-label">{{ form.debt_payment.label }}</label>
+                    {{ form.debt_payment }}
+                    {% if form.debt_payment.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.debt_payment.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                    <a href="{% url 'salary_payment_detail' pk=payment.pk %}" class="btn btn-secondary">Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
