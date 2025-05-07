@@ -75,7 +75,7 @@
                 <th>Số điện thoại</th>
                 <th>Email</th>
                 <th>Trạng thái</th>
-                <th>Thao tác</th>
+                <th width="60px">Thao tác</th>
             </tr>
         </thead>
         <tbody>
@@ -107,16 +107,26 @@
                     {% endif %}
                 </td>
                 <td>
-                    <div class="btn-group btn-group-sm">
-                        <a href="{% url 'employee_detail' employee.id %}" class="btn btn-info" title="Xem chi tiết">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                        <a href="{% url 'employee_update' employee.id %}" class="btn btn-warning" title="Chỉnh sửa">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <a href="{% url 'contract_create' employee.id %}" class="btn btn-primary" title="Tạo hợp đồng">
-                            <i class="bi bi-file-earmark-text"></i>
-                        </a>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenuButton{{ employee.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ employee.id }}">
+                            <li><a class="dropdown-item" href="{% url 'employee_detail' employee.id %}"><i class="bi bi-eye me-2"></i>Xem chi tiết</a></li>
+                            <li><a class="dropdown-item" href="{% url 'employee_update' employee.id %}"><i class="bi bi-pencil me-2"></i>Chỉnh sửa</a></li>
+
+                            {% if employee.is_active %}
+                                <li><a class="dropdown-item" href="{% url 'contract_create' employee.id %}"><i class="bi bi-file-earmark-text me-2"></i>Tạo hợp đồng</a></li>
+                                {% if employee.has_active_contract %}
+                                    <li><a class="dropdown-item" href="{% url 'employee_contracts' employee.id %}"><i class="bi bi-files me-2"></i>Xem hợp đồng</a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{% url 'employee_deactivate' employee.id %}" onclick="return confirm('Bạn có chắc chắn muốn vô hiệu hóa nhân viên này?')"><i class="bi bi-person-x me-2"></i>Vô hiệu hóa</a></li>
+                            {% else %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-success" href="{% url 'employee_activate' employee.id %}"><i class="bi bi-person-check me-2"></i>Kích hoạt lại</a></li>
+                            {% endif %}
+                        </ul>
                     </div>
                 </td>
             </tr>
@@ -198,4 +208,10 @@
     </ul>
 </nav>
 {% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Thêm các xử lý JavaScript nếu cần
+    });
+</script>
 {% endblock %}

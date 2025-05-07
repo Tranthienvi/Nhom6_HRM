@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.core.paginator import Paginator
 from django.utils import timezone
 
@@ -15,7 +15,9 @@ from .forms import (EmployeeForm, ContractForm, WorkHistoryForm, SalaryHistoryFo
 def employee_list(request):
     search_query = request.GET.get('search', '')
     position_filter = request.GET.get('position', '')
-    employees = Employee.objects.all()
+
+    # Sử dụng prefetch_related để tối ưu hóa truy vấn
+    employees = Employee.objects.prefetch_related('contracts')
 
     if search_query:
         employees = employees.filter(
@@ -102,6 +104,44 @@ def employee_update(request, pk):
     return render(request, 'employees/employee_form.html', context)
 
 
+@login_required
+def employee_deactivate(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    employee.is_active = False
+    employee.save()
+
+    # Vô hiệu hóa tất cả hợp đồng đang hoạt động của nhân viên
+    active_contracts = Contract.objects.filter(employee=employee, is_active=True)
+    for contract in active_contracts:
+        contract.is_active = False
+        contract.end_date = timezone.now().date()
+        contract.save()
+
+    messages.success(request, f'Nhân viên {employee.full_name} đã được vô hiệu hóa.')
+    return redirect('employee_list')
+
+
+@login_required
+def employee_activate(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    employee.is_active = True
+    employee.save()
+    messages.success(request, f'Nhân viên {employee.full_name} đã được kích hoạt lại.')
+    return redirect('employee_list')
+
+
+@login_required
+def employee_contracts(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    contracts = Contract.objects.filter(employee=employee).order_by('-sign_date')
+
+    context = {
+        'employee': employee,
+        'contracts': contracts,
+    }
+    return render(request, 'employees/employee_contracts.html', context)
+
+
 # Contract views
 @login_required
 def contract_list(request):
@@ -168,6 +208,7 @@ def contract_list(request):
         'expiring_contracts': expiring_contracts,
     }
     return render(request, 'employees/contract_list.html', context)
+
 
 @login_required
 def contract_create(request, employee_id=None):
@@ -331,6 +372,7 @@ def personnel_profile(request):
         'position_filter': position_filter,
     }
     return render(request, 'personnel/profile_list.html', context)
+
 
 @login_required
 def contract_create_general(request):
