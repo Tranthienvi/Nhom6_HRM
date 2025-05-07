@@ -1,21 +1,13 @@
 from django.contrib import admin
-from .models import WorkShift, AttendanceSheet, AttendanceRecord
+from .models import WorkShift, AttendanceRecord
 
 @admin.register(WorkShift)
 class WorkShiftAdmin(admin.ModelAdmin):
-    list_display = ('name', 'start_time', 'end_time', 'break_time')
-    search_fields = ('name',)
-
-@admin.register(AttendanceSheet)
-class AttendanceSheetAdmin(admin.ModelAdmin):
-    list_display = ('name', 'month', 'year', 'created_at')
-    search_fields = ('name',)
-    list_filter = ('month', 'year')
-    filter_horizontal = ('positions',)
+    list_display = ('name', 'code', 'start_time', 'end_time')
+    search_fields = ('name', 'code')
 
 @admin.register(AttendanceRecord)
 class AttendanceRecordAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'sheet', 'date', 'status', 'check_in', 'check_out', 'working_hours')
-    search_fields = ('employee__full_name', 'employee__code')
-    list_filter = ('status', 'date')
-    date_hierarchy = 'date'
+    list_display = ('name', 'start_date', 'end_date', 'attendance_type')
+    list_filter = ('start_date', 'end_date', 'attendance_type')
+    search_fields = ('name',)
