@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chi tiết hợp đồng{% endblock %}
+
+{% block sidebar %}
+<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+    <div class="position-sticky pt-3">
+        {% include 'employees/sidebar.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Chi tiết hợp đồng</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="window.print()">
+            <i class="bi bi-printer"></i> In hợp đồng
+        </button>
+        <a href="{% url 'contract_update' contract.id %}" class="btn btn-sm btn-warning me-2">
+            <i class="bi bi-pencil"></i> Chỉnh sửa
+        </a>
+        <a href="{% url 'contract_list' %}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body text-center">
+                {% if contract.employee.photo %}
+                <img src="{{ contract.employee.photo.url }}" alt="{{ contract.employee.full_name }}" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+                {% else %}
+                <div class="avatar mx-auto mb-3" style="background-color: #6366F1; width: 150px; height: 150px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; font-weight: bold;">
+                    {{ contract.employee.first_name|first }}{{ contract.employee.last_name|first }}
+                </div>
+                {% endif %}
+                <h5 class="card-title">{{ contract.employee.full_name }}</h5>
+                <p class="card-text text-muted">{{ contract.position.name }}</p>
+                <p class="card-text">
+                    {% if contract.is_active %}
+                    <span class="badge bg-success">Đang hiệu lực</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Hết hiệu lực</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Thông tin hợp đồng</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Số hợp đồng:</div>
+                    <div class="col-md-8">{{ contract.contract_number }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Loại hợp đồng:</div>
+                    <div class="col-md-8">{{ contract.get_contract_type_display }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Ngày bắt đầu:</div>
+                    <div class="col-md-8">{{ contract.start_date }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Ngày kết thúc:</div>
+                    <div class="col-md-8">{{ contract.end_date|default:"Không xác định" }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Vị trí công việc:</div>
+                    <div class="col-md-8">{{ contract.position.name }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Lương cơ bản:</div>
+                    <div class="col-md-8">{{ contract.basic_salary|floatformat:0 }} VND</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Lương đóng BHXH:</div>
+                    <div class="col-md-8">{{ contract.insurance_salary|floatformat:0 }} VND</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Trạng thái:</div>
+                    <div class="col-md-8">
+                        {% if contract.is_active %}
+                        <span class="badge bg-success">Đang hiệu lực</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Hết hiệu lực</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Ngày tạo:</div>
+                    <div class="col-md-8">{{ contract.created_at }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Cập nhật lần cuối:</div>
+                    <div class="col-md-8">{{ contract.updated_at }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Thông tin nhân viên</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Mã nhân viên:</div>
+                    <div class="col-md-8">{{ contract.employee.code }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Họ và tên:</div>
+                    <div class="col-md-8">{{ contract.employee.full_name }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Giới tính:</div>
+                    <div class="col-md-8">{{ contract.employee.get_gender_display }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Ngày sinh:</div>
+                    <div class="col-md-8">{{ contract.employee.date_of_birth }}</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Số điện thoại:</div>
+                    <div class="col-md-8">{{ contract.employee.phone }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Email:</div>
+                    <div class="col-md-8">{{ contract.employee.email }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Ngày vào làm:</div>
+                    <div class="col-md-8">{{ contract.employee.join_date }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if contract.is_active %}
+<div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="card-title mb-0">Chấm dứt hợp đồng</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-danger">Cảnh báo: Hành động này sẽ chấm dứt hợp đồng hiện tại và không thể hoàn tác.</p>
+        <form method="post" action="{% url 'contract_terminate' contract.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Bạn có chắc chắn muốn chấm dứt hợp đồng này?')">
+                <i class="bi bi-x-circle"></i> Chấm dứt hợp đồng
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

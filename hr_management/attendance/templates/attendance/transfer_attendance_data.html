@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chuyển dữ liệu tính lương{% endblock %}
+
+{% block sidebar %}
+<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+    <div class="position-sticky pt-3">
+        {% include 'attendance/sidebar.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Chuyển dữ liệu tính lương</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'attendance_sheet_detail' attendance_sheet.id %}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <h5 class="alert-heading">Thông báo!</h5>
+    <p>Bạn đang chuẩn bị chuyển dữ liệu chấm công sang tính lương. Sau khi chuyển, bảng chấm công sẽ bị khóa và không thể chỉnh sửa.</p>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Thông tin bảng chấm công</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Tên bảng chấm công:</strong> {{ attendance_sheet.name }}</p>
+                <p><strong>Tháng/Năm:</strong> {{ attendance_sheet.month }}/{{ attendance_sheet.year }}</p>
+                <p><strong>Hình thức chấm công:</strong> {{ attendance_sheet.get_attendance_type_display }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Số công chuẩn:</strong> {{ attendance_sheet.standard_workdays }}</p>
+                <p><strong>Tổng số bản ghi:</strong> {{ total_records }}</p>
+                <p><strong>Ngày tạo:</strong> {{ attendance_sheet.created_at|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Xác nhận chuyển dữ liệu</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="confirmTransfer" required>
+                <label class="form-check-label" for="confirmTransfer">
+                    Tôi xác nhận muốn chuyển dữ liệu chấm công sang tính lương và hiểu rằng bảng chấm công sẽ bị khóa sau khi chuyển.
+                </label>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary" id="transferButton" disabled>
+                    <i class="bi bi-arrow-right"></i> Chuyển dữ liệu
+                </button>
+                <a href="{% url 'attendance_sheet_detail' attendance_sheet.id %}" class="btn btn-secondary">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('confirmTransfer').addEventListener('change', function() {
+        document.getElementById('transferButton').disabled = !this.checked;
+    });
+</script>
+{% endblock %}

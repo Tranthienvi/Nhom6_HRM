@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chấm dứt hợp đồng{% endblock %}
+
+{% block sidebar %}
+<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+    <div class="position-sticky pt-3">
+        {% include 'employees/sidebar.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Chấm dứt hợp đồng</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'contract_detail' contract.id %}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-danger text-white">
+        <h5 class="card-title mb-0">Xác nhận chấm dứt hợp đồng</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-warning">
+            <h5 class="alert-heading">Cảnh báo!</h5>
+            <p>Bạn đang chuẩn bị chấm dứt hợp đồng sau:</p>
+            <ul>
+                <li><strong>Số hợp đồng:</strong> {{ contract.contract_number }}</li>
+                <li><strong>Nhân viên:</strong> {{ contract.employee.full_name }}</li>
+                <li><strong>Loại hợp đồng:</strong> {{ contract.get_contract_type_display }}</li>
+                <li><strong>Ngày bắt đầu:</strong> {{ contract.start_date }}</li>
+            </ul>
+            <p>Hành động này sẽ đánh dấu hợp đồng là "Hết hiệu lực" và không thể hoàn tác.</p>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="terminationDate" class="form-label">Ngày chấm dứt hợp đồng</label>
+                <input type="date" class="form-control" id="terminationDate" name="termination_date" value="{{ today|date:'Y-m-d' }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="terminationReason" class="form-label">Lý do chấm dứt</label>
+                <textarea class="form-control" id="terminationReason" name="termination_reason" rows="3" required></textarea>
+            </div>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'contract_detail' contract.id %}" class="btn btn-secondary me-md-2">Hủy</a>
+                <button type="submit" class="btn btn-danger">Xác nhận chấm dứt hợp đồng</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

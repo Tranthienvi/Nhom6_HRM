@@ -10,6 +10,8 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('nhan-vien/', include('employees.urls')),
+        path('api/', include('employees.urls_api')),
     path('cham-cong/', include('attendance.urls')),
     path('tien-luong/', include('payroll.urls')),
+    path('bang-luong/', include('attendance.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

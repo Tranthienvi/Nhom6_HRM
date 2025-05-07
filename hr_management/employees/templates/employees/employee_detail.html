@@ -81,16 +81,47 @@
                     <div class="col-md-8">{{ employee.email }}</div>
                 </div>
                 <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Địa chỉ:</div>
+                    <div class="col-md-8">{{ employee.address }}</div>
+                </div>
+                <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Vị trí:</div>
                     <div class="col-md-8">{{ employee.position.name }}</div>
                 </div>
                 <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Đơn vị:</div>
-                    <div class="col-md-8">{{ employee.department.name }}</div>
-                </div>
-                <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Ngày vào làm:</div>
                     <div class="col-md-8">{{ employee.join_date }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Thông tin bằng cấp và lương -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Trình độ & Lương</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="row mb-2">
+                    <div class="col-md-6 fw-bold">Trình độ học vấn:</div>
+                    <div class="col-md-6">{{ employee.get_education_level_display }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-6 fw-bold">Bằng cấp:</div>
+                    <div class="col-md-6">{{ employee.degree }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-6 fw-bold">Chuyên ngành:</div>
+                    <div class="col-md-6">{{ employee.major }}</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row mb-2">
+                    <div class="col-md-6 fw-bold">Lương cơ bản:</div>
+                    <div class="col-md-6">{{ employee.basic_salary|floatformat:0 }} VNĐ</div>
                 </div>
             </div>
         </div>

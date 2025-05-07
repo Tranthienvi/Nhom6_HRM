@@ -63,6 +63,12 @@ from django.db import models
 from employees.models import Employee, Position
 from django.utils.translation import gettext_lazy as _
 
+from django.db import models
+from employees.models import Employee, Position
+from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
+
+
 class WorkShift(models.Model):
 	name = models.CharField("Tên ca", max_length=100)
 	start_time = models.TimeField("Giờ bắt đầu")
@@ -79,6 +85,11 @@ class WorkShift(models.Model):
 	def __str__(self):
 		return f"{self.name} ({self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')})"
 
+	class Meta:
+		verbose_name = "Ca làm việc"
+		verbose_name_plural = "Ca làm việc"
+		ordering = ['start_time']
+
 
 class AttendanceSheet(models.Model):
 	ATTENDANCE_TYPE_CHOICES = (
@@ -94,15 +105,23 @@ class AttendanceSheet(models.Model):
 
 	# Các trường mới bổ sung
 	attendance_type = models.CharField("Hình thức chấm công", max_length=10, choices=ATTENDANCE_TYPE_CHOICES,
-	                                   default='daily')
+									   default='daily')
 	standard_workdays = models.PositiveIntegerField("Số công chuẩn", default=22)
+	full_workdays = models.PositiveIntegerField("Đủ công", default=0)
+	missing_workdays = models.PositiveIntegerField("Thiếu công", default=0)
 	paid_leave = models.PositiveIntegerField("Công nghỉ chế độ", default=0)
 	approved_leave = models.PositiveIntegerField("Nghỉ có phép", default=0)
 	unapproved_leave = models.PositiveIntegerField("Nghỉ không phép", default=0)
 	is_transferred = models.BooleanField("Đã chuyển tính lương", default=False)
+	is_locked = models.BooleanField("Đã khóa", default=False)
 
 	def __str__(self):
 		return f"{self.name} - {self.month}/{self.year}"
+
+	class Meta:
+		verbose_name = "Bảng chấm công"
+		verbose_name_plural = "Bảng chấm công"
+		ordering = ['-year', '-month']
 
 
 class AttendanceRecord(models.Model):
@@ -113,8 +132,9 @@ class AttendanceRecord(models.Model):
 		('leave', 'Nghỉ phép'),
 	)
 
-	sheet = models.ForeignKey(AttendanceSheet, on_delete=models.CASCADE, related_name='records')
-	employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+	sheet = models.ForeignKey(AttendanceSheet, on_delete=models.CASCADE, related_name='records',
+							  verbose_name="Bảng chấm công")
+	employee = models.ForeignKey(Employee, on_delete=models.CASCADE, verbose_name="Nhân viên")
 	date = models.DateField("Ngày")
 	status = models.CharField("Trạng thái", max_length=10, choices=STATUS_CHOICES)
 	check_in = models.TimeField("Giờ vào", null=True, blank=True)
@@ -124,34 +144,57 @@ class AttendanceRecord(models.Model):
 
 	# Trường mới bổ sung
 	work_shift = models.ForeignKey(WorkShift, on_delete=models.SET_NULL, null=True, blank=True,
-	                               verbose_name="Ca làm việc")
+								   verbose_name="Ca làm việc")
 
 	def __str__(self):
 		return f"{self.employee.full_name} - {self.date} - {self.get_status_display()}"
 
-class PayrollTemplate(models.Model):
-    code = models.CharField(max_length=20, unique=True)
-    name = models.CharField(max_length=100)
-    salary = models.DecimalField(max_digits=12, decimal_places=2)
-    bonus = models.DecimalField(max_digits=12, decimal_places=2)
-    deductions = models.DecimalField(max_digits=12, decimal_places=2)
-    effective_date = models.DateField()
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+	class Meta:
+		verbose_name = "Bản ghi chấm công"
+		verbose_name_plural = "Bản ghi chấm công"
+		ordering = ['-date']
+		unique_together = ['sheet', 'employee', 'date']
 
-    def __str__(self):
-        return self.name
+
+class PayrollTemplate(models.Model):
+	code = models.CharField("Mã mẫu", max_length=20, unique=True)
+	name = models.CharField("Tên mẫu", max_length=100)
+	salary = models.DecimalField("Lương cơ bản", max_digits=12, decimal_places=2)
+	bonus = models.DecimalField("Thưởng", max_digits=12, decimal_places=2)
+	deductions = models.DecimalField("Khấu trừ", max_digits=12, decimal_places=2)
+	effective_date = models.DateField("Ngày hiệu lực")
+	is_active = models.BooleanField("Đang sử dụng", default=True)
+	created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
+
+	def __str__(self):
+		return self.name
+
+	class Meta:
+		verbose_name = "Mẫu bảng lương"
+		verbose_name_plural = "Mẫu bảng lương"
+
 
 class PayrollComponent(models.Model):
-    # Các trường trong bảng lương
-    name = models.CharField(("Tên thành phần"), max_length=100)
-    amount = models.DecimalField(_("Số tiền"), max_digits=12, decimal_places=2)
-    component_type = models.CharField(_("Loại thành phần"), max_length=50)  # Ví dụ: Lương cơ bản, thưởng,...
-    is_active = models.BooleanField(_("Kích hoạt"), default=True)
+	COMPONENT_TYPES = (
+		('basic', 'Lương cơ bản'),
+		('bonus', 'Thưởng'),
+		('allowance', 'Phụ cấp'),
+		('deduction', 'Khấu trừ'),
+		('tax', 'Thuế'),
+		('insurance', 'Bảo hiểm'),
+	)
 
-    payroll_template = models.ForeignKey(
-        'PayrollTemplate', on_delete=models.CASCADE, related_name='components', verbose_name=_("Mẫu bảng lương")
-    )
+	name = models.CharField("Tên thành phần", max_length=100)
+	amount = models.DecimalField("Số tiền", max_digits=12, decimal_places=2)
+	component_type = models.CharField("Loại thành phần", max_length=50, choices=COMPONENT_TYPES)
+	is_active = models.BooleanField("Kích hoạt", default=True)
+	payroll_template = models.ForeignKey(
+		PayrollTemplate, on_delete=models.CASCADE, related_name='components', verbose_name="Mẫu bảng lương"
+	)
 
-    def __str__(self):
-        return self.name
+	def __str__(self):
+		return self.name
+
+	class Meta:
+		verbose_name = "Thành phần bảng lương"
+		verbose_name_plural = "Thành phần bảng lương"
