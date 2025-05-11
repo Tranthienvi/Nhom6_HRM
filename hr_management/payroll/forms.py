@@ -4,7 +4,8 @@ from .models import (
     PayrollData, PayrollDataDetail, Payroll, PayrollDetail,
     PayrollPayment, PayrollPaymentDetail, Payslip
 )
-from employees.models import Employee, Department
+
+from employees.models import Employee
 
 from django import forms
 from .models import PayrollTemplate
@@ -92,7 +93,7 @@ class PayrollDetailForm(forms.ModelForm):
         model = PayrollDetail
         fields = ['employee', 'working_days', 'overtime_hours', 'leave_days',
                  'basic_salary', 'allowance', 'bonus', 'deduction',
-                 'gross_salary', 'insurance', 'tax', 'net_salary']
+                 'gross_salary', 'tax', 'net_salary', ]
         widgets = {
             'employee': forms.Select(attrs={'class': 'form-select'}),
             'working_days': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1'}),
@@ -103,7 +104,6 @@ class PayrollDetailForm(forms.ModelForm):
             'bonus': forms.NumberInput(attrs={'class': 'form-control'}),
             'deduction': forms.NumberInput(attrs={'class': 'form-control'}),
             'gross_salary': forms.NumberInput(attrs={'class': 'form-control'}),
-            'insurance': forms.NumberInput(attrs={'class': 'form-control'}),
             'tax': forms.NumberInput(attrs={'class': 'form-control'}),
             'net_salary': forms.NumberInput(attrs={'class': 'form-control'}),
         }
@@ -148,11 +148,6 @@ class PayrollFilterForm(forms.Form):
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    department = forms.ModelChoiceField(
-        queryset=Department.objects.filter(is_active=True),
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
     status = forms.ChoiceField(
         choices=[('', '-- Tất cả trạng thái --')] + list(PayrollPayment.STATUS_CHOICES),
         required=False,
@@ -166,11 +161,6 @@ class PayrollFilterForm(forms.Form):
 class PayrollDataFilterForm(forms.Form):
     period = forms.ModelChoiceField(
         queryset=PayrollPeriod.objects.all(),
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    department = forms.ModelChoiceField(
-        queryset=Department.objects.filter(is_active=True),
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'})
     )

@@ -11,6 +11,7 @@
 </div>
 {% endblock %}
 
+
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">Chi tiết nhân viên</h1>
@@ -23,6 +24,7 @@
         </a>
     </div>
 </div>
+
 
 <div class="row">
     <div class="col-md-4 mb-4">
@@ -81,27 +83,73 @@
                     <div class="col-md-8">{{ employee.email }}</div>
                 </div>
                 <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Địa chỉ:</div>
+                    <div class="col-md-8">{{ employee.address }}</div>
+                </div>
+                <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Vị trí:</div>
                     <div class="col-md-8">{{ employee.position.name }}</div>
                 </div>
                 <div class="row mb-2">
-                    <div class="col-md-4 fw-bold">Đơn vị:</div>
-                    <div class="col-md-8">{{ employee.department.name }}</div>
-                </div>
-                <div class="row mb-2">
                     <div class="col-md-4 fw-bold">Ngày vào làm:</div>
                     <div class="col-md-8">{{ employee.join_date }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Lương cơ bản:</div>
+                    <div class="col-md-8">{{ employee.basic_salary|floatformat:0 }} VND</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Thuế TNCN:</div>
+                    <div class="col-md-8">{{ employee.personal_tax|floatformat:2 }}%</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Khấu trừ:</div>
+                    <div class="col-md-8">{{ employee.deduction|floatformat:0 }} VND</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Thưởng hiệu suất:</div>
+                    <div class="col-md-8">{{ employee.performance_bonus|floatformat:0 }} VND</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-4 fw-bold">Số người phụ thuộc:</div>
+                    <div class="col-md-8">{{ employee.dependents }}</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Thông tin bằng cấp và lương -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Trình độ & Lương</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="row mb-2">
+                    <div class="col-md-6 fw-bold">Trình độ học vấn:</div>
+                    <div class="col-md-6">{{ employee.get_education_level_display }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-6 fw-bold">Bằng cấp:</div>
+                    <div class="col-md-6">{{ employee.degree }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-6 fw-bold">Chuyên ngành:</div>
+                    <div class="col-md-6">{{ employee.major }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if salary_history %}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">Hợp đồng</h5>
-        <a href="{% url 'contract_create' employee.id %}" class="btn btn-sm btn-primary">
-            <i class="bi bi-plus"></i> Thêm hợp đồng
+        <h5 class="card-title mb-0">Lịch sử thay đổi lương</h5>
+        <a href="{% url 'salary_history_create' employee.id %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus"></i> Thêm lịch sử lương
         </a>
     </div>
     <div class="card-body">
@@ -109,33 +157,19 @@
             <table class="table table-striped table-hover">
                 <thead>
                     <tr>
-                        <th>Loại hợp đồng</th>
-                        <th>Ngày bắt đầu</th>
-                        <th>Ngày kết thúc</th>
-                        <th>Vị trí</th>
-                        <th>Lương cơ bản</th>
-                        <th>Trạng thái</th>
+                        <th>Ngày hiệu lực</th>
+                        <th>Lương cũ</th>
+                        <th>Lương mới</th>
+                        <th>Lý do thay đổi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for contract in contracts %}
+                    {% for history in salary_history %}
                     <tr>
-                        <td>{{ contract.get_contract_type_display }}</td>
-                        <td>{{ contract.start_date }}</td>
-                        <td>{{ contract.end_date|default:"Không xác định" }}</td>
-                        <td>{{ contract.position.name }}</td>
-                        <td>{{ contract.basic_salary|floatformat:0 }} VND</td>
-                        <td>
-                            {% if contract.is_active %}
-                            <span class="badge bg-success">Đang hiệu lực</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Hết hiệu lực</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center">Không có hợp đồng nào.</td>
+                        <td>{{ history.effective_date }}</td>
+                        <td>{{ history.old_salary|floatformat:0 }} VND</td>
+                        <td>{{ history.new_salary|floatformat:0 }} VND</td>
+                        <td>{{ history.reason }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -143,4 +177,42 @@
         </div>
     </div>
 </div>
+{% endif %}
+
+{% if work_history %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Lịch sử công việc</h5>
+        <a href="{% url 'work_history_create' employee.id %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus"></i> Thêm lịch sử công việc
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Công ty</th>
+                        <th>Vị trí</th>
+                        <th>Ngày bắt đầu</th>
+                        <th>Ngày kết thúc</th>
+                        <th>Mô tả</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for history in work_history %}
+                    <tr>
+                        <td>{{ history.company }}</td>
+                        <td>{{ history.position }}</td>
+                        <td>{{ history.start_date }}</td>
+                        <td>{{ history.end_date|default:"Hiện tại" }}</td>
+                        <td>{{ history.description|truncatechars:50 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

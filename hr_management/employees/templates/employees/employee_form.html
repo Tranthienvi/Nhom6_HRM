@@ -21,29 +21,90 @@
     </div>
 </div>
 
+<!-- Hiển thị thông báo lỗi -->
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Hiển thị lỗi form -->
+{% if form.errors %}
+<div class="alert alert-danger">
+    <strong>Lỗi khi lưu form:</strong>
+    <ul>
+        {% for field, errors in form.errors.items %}
+            <li>{{ field }}: {{ errors|join:", " }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+
 <div class="card">
     <div class="card-body">
+        <!-- Quan trọng: Thêm enctype="multipart/form-data" vào form -->
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
-            <div class="row">
-                <div class="col-md-6">
-                    {{ form.code|as_crispy_field }}
-                    {{ form.first_name|as_crispy_field }}
-                    {{ form.last_name|as_crispy_field }}
-                    {{ form.gender|as_crispy_field }}
-                    {{ form.date_of_birth|as_crispy_field }}
-                    {{ form.id_number|as_crispy_field }}
+
+            <!-- Thông tin cơ bản -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">THÔNG TIN CƠ BẢN</h5>
                 </div>
-                <div class="col-md-6">
-                    {{ form.phone|as_crispy_field }}
-                    {{ form.email|as_crispy_field }}
-                    {{ form.position|as_crispy_field }}
-                    {{ form.department|as_crispy_field }}
-                    {{ form.join_date|as_crispy_field }}
-                    {{ form.is_active|as_crispy_field }}
-                    {{ form.photo|as_crispy_field }}
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.code|as_crispy_field }}
+                            {{ form.full_name|as_crispy_field }}
+                            {{ form.gender|as_crispy_field }}
+                            {{ form.date_of_birth|as_crispy_field }}
+                            {{ form.id_number|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.phone|as_crispy_field }}
+                            {{ form.email|as_crispy_field }}
+                            {{ form.position|as_crispy_field }}
+                            {{ form.address|as_crispy_field }}
+                            {{ form.join_date|as_crispy_field }}
+                            {{ form.is_active|as_crispy_field }}
+                            {{ form.photo|as_crispy_field }}
+
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Thông tin bằng cấp và lương -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">THÔNG TIN CÔNG VIỆC VÀ LƯƠNG</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.employment_type|as_crispy_field }}
+                            {{ form.education_level|as_crispy_field }}
+                            {{ form.degree|as_crispy_field }}
+                            {{ form.major|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.personal_tax|as_crispy_field }}
+                            {{ form.basic_salary|as_crispy_field }}
+                            {{ form.salary_rate|as_crispy_field }}
+                            {{ form.deduction|as_crispy_field }}
+                            {{ form.performance_bonus|as_crispy_field }}
+                            {{ form.dependents|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="mt-3">
                 <button type="submit" class="btn btn-primary">Lưu</button>
                 <a href="{% url 'employee_list' %}" class="btn btn-secondary">Hủy</a>
@@ -51,4 +112,29 @@
         </form>
     </div>
 </div>
+<!-- Thêm JavaScript để debug form submission -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+
+    form.addEventListener('submit', function(e) {
+        console.log('Form submission attempted');
+
+        // Kiểm tra các trường bắt buộc
+        const requiredFields = form.querySelectorAll('[required]');
+        let hasError = false;
+
+        requiredFields.forEach(field => {
+            if (!field.value) {
+                console.error('Missing required field:', field.name);
+                hasError = true;
+            }
+        });
+
+        if (hasError) {
+            console.error('Form has validation errors');
+        }
+    });
+});
+</script>
 {% endblock %}

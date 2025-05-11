@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %}Thêm hợp đồng{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block sidebar %}
 <div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
@@ -13,7 +13,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Thêm hợp đồng</h1>
+    <h1 class="h2">{{ title }}</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <a href="{% url 'employee_detail' employee.id %}" class="btn btn-sm btn-secondary">
             <i class="bi bi-arrow-left"></i> Quay lại
@@ -21,7 +21,18 @@
     </div>
 </div>
 
-<div class="card mb-4">
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
     <div class="card-header">
         <h5 class="card-title mb-0">Thông tin nhân viên</h5>
     </div>
@@ -33,29 +44,31 @@
             </div>
             <div class="col-md-6">
                 <p><strong>Vị trí:</strong> {{ employee.position.name }}</p>
-                <p><strong>Đơn vị:</strong> {{ employee.department.name }}</p>
             </div>
         </div>
     </div>
 </div>
 
-<div class="card">
+<div class="card mt-4">
     <div class="card-header">
-        <h5 class="card-title mb-0">Thông tin hợp đồng</h5>
+        <h5 class="card-title mb-0">Thông tin lịch sử công việc</h5>
     </div>
     <div class="card-body">
         <form method="post">
             {% csrf_token %}
             <div class="row">
                 <div class="col-md-6">
-                    {{ form.contract_type|as_crispy_field }}
+                    {{ form.company|as_crispy_field }}
+                    {{ form.position|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
                     {{ form.start_date|as_crispy_field }}
                     {{ form.end_date|as_crispy_field }}
                 </div>
-                <div class="col-md-6">
-                    {{ form.position|as_crispy_field }}
-                    {{ form.basic_salary|as_crispy_field }}
-                    {{ form.is_active|as_crispy_field }}
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    {{ form.description|as_crispy_field }}
                 </div>
             </div>
             <div class="mt-3">

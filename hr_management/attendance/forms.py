@@ -2,20 +2,20 @@ from django import forms
 from .models import WorkShift, AttendanceSheet, AttendanceRecord
 from employees.models import Position
 from .models import Employee
-from .models import PayrollTemplate
-from .models import PayrollComponent
+from payroll.models import PayrollTemplate
+from payroll.models import PayrollComponent
 
-class EmployeeForm(forms.ModelForm):
-    class Meta:
-        model = Employee
-        fields = [
-            'code', 'first_name', 'last_name', 'full_name', 'gender', 'date_of_birth', 'id_number',
-            'phone', 'email', 'position', 'department', 'join_date', 'is_active', 'photo', 'labor_status',
-            'employment_type', 'contract_type', 'dependents'
-        ]
-        widgets = {
-            'join_date': forms.SelectDateWidget(years=range(2000, 2031)),
-        }
+# class EmployeeForm(forms.ModelForm):
+#     class Meta:
+#         model = Employee
+#         fields = [
+#             'code', 'full_name', 'gender', 'date_of_birth', 'id_number',
+#             'phone', 'email', 'position', 'department', 'join_date', 'is_active', 'photo', 'labor_status',
+#             'employment_type', 'contract_type', 'dependents'
+#         ]
+#         widgets = {
+#             'join_date': forms.SelectDateWidget(years=range(2000, 2031)),
+#         }
 
 class WorkShiftForm(forms.ModelForm):
 	class Meta:
@@ -57,14 +57,24 @@ class AttendanceRecordForm(forms.ModelForm):
 	class Meta:
 		model = AttendanceRecord
 		fields = [
-			'date', 'status', 'check_in', 'check_out',
-			'working_hours', 'note', 'work_shift'
+			# 'date', 'status', 'check_in', 'check_out',
+			# 'working_hours', 'note', 'work_shift'
+			'name', 'start_date', 'end_date', 'attendance_type',
+			'positions', 'employee', 'apply_to_all_shifts',
+			'work_shifts', 'attendance_date', 'status',
+			'check_in', 'check_out', 'work_hours', 'overtime', 'note'
 		]
 		widgets = {
-			'date': forms.DateInput(attrs={'type': 'date'}),
+			# 'date': forms.DateInput(attrs={'type': 'date'}),
+			# 'check_in': forms.TimeInput(attrs={'type': 'time'}),
+			# 'check_out': forms.TimeInput(attrs={'type': 'time'}),
+			# 'work_shift': forms.Select(attrs={'class': 'form-select'}),
+			'start_date': forms.DateInput(attrs={'type': 'date'}),
+			'end_date': forms.DateInput(attrs={'type': 'date'}),
+			'attendance_date': forms.DateInput(attrs={'type': 'date'}),
 			'check_in': forms.TimeInput(attrs={'type': 'time'}),
 			'check_out': forms.TimeInput(attrs={'type': 'time'}),
-			'work_shift': forms.Select(attrs={'class': 'form-select'}),
+			'work_shifts': forms.CheckboxSelectMultiple(),
 		}
 class PayrollTemplateForm(forms.ModelForm):
     class Meta:

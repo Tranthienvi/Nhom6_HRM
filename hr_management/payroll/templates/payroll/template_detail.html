@@ -77,8 +77,6 @@
                             <span class="badge bg-danger">Khấu trừ</span>
                             {% elif component.component_type == 'tax' %}
                             <span class="badge bg-warning">Thuế</span>
-                            {% elif component.component_type == 'insurance' %}
-                            <span class="badge bg-info">Bảo hiểm</span>
                             {% endif %}
                         </td>
                         <td>{{ component.value|default:"-" }}</td>

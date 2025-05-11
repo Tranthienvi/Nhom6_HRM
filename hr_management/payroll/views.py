@@ -552,7 +552,6 @@ def payroll_calculate(request, pk):
 		for detail in data.details.all():
 			# Tính toán các giá trị
 			gross_salary = detail.basic_salary + detail.allowance + detail.bonus
-			insurance = gross_salary * 0.105  # 10.5% BHXH, BHYT, BHTN
 
 			# Tính thuế TNCN (giả định)
 			taxable_income = gross_salary - insurance - 11000000  # Giảm trừ gia cảnh
@@ -573,7 +572,7 @@ def payroll_calculate(request, pk):
 			else:
 				tax = 18150000 + (taxable_income - 80000000) * 0.35
 
-			net_salary = gross_salary - insurance - tax - detail.deduction
+			net_salary = gross_salary - tax - detail.deduction
 
 			# Tạo PayrollDetail mới
 			PayrollDetail.objects.create(
@@ -587,7 +586,6 @@ def payroll_calculate(request, pk):
 				bonus=detail.bonus,
 				deduction=detail.deduction,
 				gross_salary=gross_salary,
-				insurance=insurance,
 				tax=tax,
 				net_salary=net_salary
 			)
@@ -630,7 +628,6 @@ def payroll_export_csv(request, pk):
 			detail.bonus,
 			detail.deduction,
 			detail.gross_salary,
-			detail.insurance,
 			detail.tax,
 			detail.net_salary
 		])
@@ -730,37 +727,3 @@ def payroll_payment_create(request, payroll_id=None):
 
     return render(request, 'payroll/payment_create.html', {'form': form})
 
-file = "employees/forms.py"
-from django import forms
-from .models import Employee, Contract, WorkHistory, SalaryHistory
-
-
-class EmployeeForm(forms.ModelForm):
-	class Meta:
-		model = Employee
-		fields = ['employee_id', 'first_name', 'last_name', 'date_of_birth', 'gender', 'address', 'phone_number',
-		          'email', 'department', 'position', 'hire_date', 'status']
-		widgets = {
-			'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
-			'hire_date': forms.DateInput(attrs={'type': 'date'}),
-		}
-
-
-class ContractForm(forms.ModelForm):
-    class Meta:
-        model = Contract
-        fields = ['contract_type', 'start_date', 'end_date', 'basic_salary', 'position']
-
-
-
-class WorkHistoryForm(forms.ModelForm):
-    class Meta:
-        model = WorkHistory
-        fields = ['company', 'position', 'start_date', 'end_date', 'description']
-
-
-
-class SalaryHistoryForm(forms.ModelForm):
-    class Meta:
-        model = SalaryHistory
-        fields = ['employee', 'effective_date', 'old_salary', 'new_salary', 'reason']
