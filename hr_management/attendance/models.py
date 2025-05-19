@@ -1,86 +1,7 @@
 from django.db import models
 from employees.models import Employee, Position
-
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-
-from datetime import date
-
-class AttendanceSheet(models.Model):
-    STATUS_CHOICES = [
-        ('draft', 'Bản nháp'),
-        ('active', 'Đang hoạt động'),
-        ('closed', 'Đã đóng'),
-        ('transferred', 'Đã chuyển tính lương'),
-    ]
-
-    name = models.CharField("Tên bảng chấm công", max_length=100)
-    month = models.PositiveIntegerField("Tháng")
-    year = models.PositiveIntegerField("Năm")
-    positions = models.ManyToManyField(Position, related_name='attendance_sheets', verbose_name="Vị trí áp dụng")
-    standard_workdays = models.PositiveIntegerField("Số công chuẩn", default=22)
-    paid_leave = models.PositiveIntegerField("Nghỉ có phép", default=0)
-    unpaid_leave = models.PositiveIntegerField("Nghỉ không phép", default=0)
-    policy_leave = models.PositiveIntegerField("Công nghỉ chế độ", default=0)
-    attendance_type = models.CharField("Hình thức chấm công", max_length=50, default="Theo ca")
-    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
-    status = models.CharField("Trạng thái", max_length=20, choices=STATUS_CHOICES, default='draft')
-
-    def __str__(self):
-        return f"{self.name} - {self.month}/{self.year}"
-
-    def get_month_year_display(self):
-        return f"{self.month}/{self.year}"
-
-
-class AttendanceRecord(models.Model):
-    STATUS_CHOICES = [
-        ('present', 'Có mặt'),
-        ('absent', 'Vắng mặt'),
-        ('late', 'Đi muộn'),
-        ('early', 'Về sớm'),
-        ('leave', 'Nghỉ phép'),
-    ]
-    ATTENDANCE_TYPE_CHOICES = (
-                ('shift', 'Theo ca'),
-                ('daily', 'Theo ngày'),
-            )
-    name = models.CharField("Tên bảng chấm công", max_length=100)
-    sheet = models.ForeignKey(AttendanceSheet, on_delete=models.CASCADE, related_name='records')
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendance_records')
-    attendance_date = models.DateField("Ngày", null=True)
-    status = models.CharField("Trạng thái", max_length=20, choices=STATUS_CHOICES, default='present')
-    check_in = models.TimeField("Giờ vào", null=True, blank=True)
-    check_out = models.TimeField("Giờ ra", null=True, blank=True)
-    work_hours = models.DecimalField("Số giờ làm việc", max_digits=5, decimal_places=2, default=0)
-    overtime = models.DecimalField("Giờ làm thêm", max_digits=5, decimal_places=2, default=0)
-    note = models.CharField("Ghi chú", max_length=200, blank=True)
-
-    # Bổ sung default
-    start_date = models.DateField(verbose_name="Ngày bắt đầu", default=date.today)
-    end_date = models.DateField(verbose_name="Ngày kết thúc", default=date.today)
-
-    # Giả sử ATTENDANCE_TYPE_CHOICES có ('default', 'Bình thường'), thì bạn dùng 'default'
-    attendance_type = models.CharField(
-        max_length=20,
-        choices=ATTENDANCE_TYPE_CHOICES,
-        verbose_name="Hình thức chấm công",
-        default='default'  # hoặc giá trị mặc định phù hợp trong ATTENDANCE_TYPE_CHOICES
-    )
-
-    # Bạn cần tạo một bản ghi Position trước để dùng default ID
-    positions = models.ForeignKey(
-        Position,
-        on_delete=models.CASCADE,
-        verbose_name="Vị trí áp dụng",
-        default=1  # Cần đảm bảo Position với ID = 1 tồn tại
-    )
-    # work_shifts = models.ManyToManyField(WorkShift, blank=True, verbose_name="Ca làm việc")
-    apply_to_all_shifts = models.BooleanField(default=False, verbose_name="Chọn tất cả ca")
-
-
-    def __str__(self):
-        return f"{self.employee.full_name} - {self.date} - {self.get_status_display()}"
+from employees.models import Position
 
 class WorkShift(models.Model):
     name = models.CharField(max_length=100, verbose_name="Tên ca làm việc")
@@ -113,29 +34,29 @@ class WorkShift(models.Model):
         verbose_name = "Ca làm việc"
         verbose_name_plural = "Các ca làm việc"
 
-# class AttendanceRecord(models.Model):
-#     ATTENDANCE_TYPE_CHOICES = (
-#         ('shift', 'Theo ca'),
-#         ('daily', 'Theo ngày'),
-#     )
-#
-#     name = models.CharField(max_length=200, verbose_name="Tên bảng chấm công")
-#     start_date = models.DateField(verbose_name="Ngày bắt đầu")
-#     end_date = models.DateField(verbose_name="Ngày kết thúc")
-#     attendance_type = models.CharField(max_length=20, choices=ATTENDANCE_TYPE_CHOICES, verbose_name="Hình thức chấm công")
-#     positions = models.ForeignKey(Position, on_delete=models.CASCADE, verbose_name="Vị trí áp dụng")
-#     apply_to_all_shifts = models.BooleanField(default=False, verbose_name="Chọn tất cả ca")
-#     work_shifts = models.ManyToManyField(WorkShift, blank=True, verbose_name="Ca làm việc")
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-#
-#     def __str__(self):
-#         return self.name
-#
-#     class Meta:
-#         verbose_name = "Bảng chấm công chi tiết"
-#         verbose_name_plural = "Các bảng chấm công chi tiết"
-#         ordering = ['-start_date']
+class AttendanceRecord(models.Model):
+    ATTENDANCE_TYPE_CHOICES = (
+        ('shift', 'Theo ca'),
+        ('daily', 'Theo ngày'),
+    )
+
+    name = models.CharField(max_length=200, verbose_name="Tên bảng chấm công")
+    start_date = models.DateField(verbose_name="Ngày bắt đầu")
+    end_date = models.DateField(verbose_name="Ngày kết thúc")
+    attendance_type = models.CharField(max_length=20, choices=ATTENDANCE_TYPE_CHOICES, verbose_name="Hình thức chấm công")
+    positions = models.ForeignKey(Position, on_delete=models.CASCADE, verbose_name="Vị trí áp dụng")
+    apply_to_all_shifts = models.BooleanField(default=False, verbose_name="Chọn tất cả ca")
+    work_shifts = models.ManyToManyField(WorkShift, blank=True, verbose_name="Ca làm việc")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Bảng chấm công chi tiết"
+        verbose_name_plural = "Các bảng chấm công chi tiết"
+        ordering = ['-start_date']
 
 class DailyAttendance(models.Model):
     ATTENDANCE_STATUS_CHOICES = (
@@ -163,12 +84,20 @@ class DailyAttendance(models.Model):
         verbose_name_plural = "Chấm công hàng ngày"
         unique_together = ('attendance_record', 'employee', 'date')  # Đảm bảo không có bản ghi trùng lặp
 
+
 class AttendanceSummary(models.Model):
+    month = models.IntegerField(verbose_name="Tháng", default=1)
+    year = models.IntegerField(verbose_name="Năm", default=2025)
     name = models.CharField(max_length=200, verbose_name="Tên bảng chấm công tổng hợp")
     position = models.ForeignKey(Position, on_delete=models.CASCADE, verbose_name="Vị trí áp dụng")
-    attendance_records = models.ManyToManyField(AttendanceRecord, verbose_name="Danh sách bảng chấm công chi tiết")
+    attendance_records = models.ManyToManyField('AttendanceRecord', verbose_name="Danh sách bảng chấm công chi tiết")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    transferred = models.BooleanField(default=False, verbose_name="Đã chuyển tính lương")
+    standard_workdays = models.DecimalField(max_digits=5, decimal_places=2, default=24,
+                                            verbose_name="Số công chuẩn")
+    start_date = models.DateField(null=True, blank=True, verbose_name="Ngày bắt đầu")
+    end_date = models.DateField(null=True, blank=True, verbose_name="Ngày kết thúc")
 
     def __str__(self):
         return self.name
@@ -180,9 +109,43 @@ class AttendanceSummary(models.Model):
 
     @property
     def date_range(self):
+        if self.start_date and self.end_date:
+            return f"{self.start_date.strftime('%d/%m/%Y')} - {self.end_date.strftime('%d/%m/%Y')}"
+
         records = self.attendance_records.all()
         if records:
             start_date = min(record.start_date for record in records)
             end_date = max(record.end_date for record in records)
             return f"{start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}"
         return "N/A"
+
+
+class EmployeeAttendance(models.Model):
+    employee = models.ForeignKey('employees.Employee', on_delete=models.CASCADE,
+                                 verbose_name="Nhân viên")
+    attendance_summary = models.ForeignKey(AttendanceSummary, on_delete=models.CASCADE,
+                                           related_name='employee_attendances',
+                                           verbose_name="Bảng chấm công tổng hợp")
+    workdays = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                   verbose_name="Số công làm việc")
+    paid_leave = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                     verbose_name="Nghỉ có lương")
+    unpaid_leave = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                       verbose_name="Nghỉ không lương")
+    policy_leave = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                       verbose_name="Nghỉ chế độ")
+    late_early_minutes = models.IntegerField(default=0,
+                                             verbose_name="Đi muộn/về sớm (phút)")
+
+    class Meta:
+        verbose_name = "Chấm công nhân viên"
+        verbose_name_plural = "Chấm công nhân viên"
+        unique_together = ('employee', 'attendance_summary')
+
+    @property
+    def total_workdays(self):
+        return self.workdays + self.paid_leave + self.policy_leave
+
+    @property
+    def total_paid_days(self):
+        return self.workdays + self.paid_leave + self.policy_leave

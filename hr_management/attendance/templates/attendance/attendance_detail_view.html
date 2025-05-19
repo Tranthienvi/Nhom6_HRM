@@ -6,31 +6,25 @@ Bảng chấm công chi tiết - Ms.Vy English
 {% endblock %}
 
 {% block module_sidebar %}
-<ul class="nav flex-column">
-    <li class="nav-item">
-        <a class="nav-link {% if 'work-shifts' in request.path %}active{% endif %}" href="{% url 'work_shift_list' %}">
-            <i class="bi bi-calendar-check me-2"></i> Ca làm việc
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if request.path == '/attendance-details/' %}active{% endif %}" href="{% url 'attendance_detail_list' %}">
-            <i class="bi bi-list-check me-2"></i> Bảng chấm công chi tiết
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if request.path == '/attendance-summary/' %}active{% endif %}" href="{% url 'attendance_summary' %}">
-            <i class="bi bi-bar-chart me-2"></i> Bảng chấm công tổng hợp
-        </a>
-    </li>
-</ul>
+{% include "attendance/sidebar.html" %}
 {% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 header-section">
-    <h2 class="text-center fw-bold text-primary page-title">Bảng chấm công chi tiết {{ attendance_record.start_date }} - {{ attendance_record.end_date }}</h2>
-    <a href="{% url 'attendance_detail_list' %}" class="custom-btn custom-btn-secondary">
-        <i class="bi bi-arrow-left me-2"></i> Quay lại
-    </a>
+    <h2 class="text-center fw-bold text-dark page-title">
+        Bảng chấm công chi tiết tháng {{ attendance_record.start_date|date:"m" }}
+    </h2>
+    <div class="d-flex gap-2">
+        <a href="{% url 'attendance_detail_list' %}" class="custom-btn custom-btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại
+        </a>
+        <a href="{% url 'export_attendance_to_excel' record_id=attendance_record.id %}" class="custom-btn custom-btn-primary">
+            <i class="bi bi-file-earmark-excel me-1"></i> Xuất Excel
+        </a>
+        <button type="button" class="custom-btn custom-btn-primary" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+            <i class="bi bi-upload me-1"></i> Nhập Excel
+        </button>
+    </div>
 </div>
 
 <div class="card shadow-sm">
@@ -174,7 +168,7 @@ Bảng chấm công chi tiết - Ms.Vy English
     </div>
 </div>
 
-<!-- Modal chấm công -->
+<!-- Modal để chỉnh sửa chấm công -->
 <div class="modal fade" id="attendanceModal" tabindex="-1" aria-labelledby="attendanceModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -183,48 +177,65 @@ Bảng chấm công chi tiết - Ms.Vy English
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Thông tin</th>
-                            <th>Giá trị</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Số công hưởng lương</td>
-                            <td><input type="number" step="0.1" class="form-control" id="paidWorkDays" value="1"></td>
-                        </tr>
-                        <tr>
-                            <td>Số công đi làm thực tế</td>
-                            <td><input type="number" step="0.1" class="form-control" id="actualWorkDays" value="1"></td>
-                        </tr>
-                        <tr>
-                            <td>Giờ vào</td>
-                            <td><input type="text" class="form-control timepicker" id="checkInTime" placeholder="19:30"></td>
-                        </tr>
-                        <tr>
-                            <td>Giờ ra</td>
-                            <td><input type="text" class="form-control timepicker" id="checkOutTime" placeholder="22:00"></td>
-                        </tr>
-                        <tr>
-                            <td>Nghỉ</td>
-                            <td>
-                                <select class="form-control" id="attendanceStatus" name="attendanceStatus">
-                                    <option value="not_absent" selected>Không nghỉ</option>
-                                    <option value="permitted_absence">Nghỉ có phép</option>
-                                    <option value="unpermitted_absence">Nghỉ không phép</option>
-                                    <option value="regime_absence">Nghỉ theo chế độ</option>
-                                </select>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="mb-3">
+                    <label for="checkInTime" class="form-label">Giờ vào</label>
+                    <input type="text" class="form-control timepicker" id="checkInTime" placeholder="HH:MM">
+                </div>
+                <div class="mb-3">
+                    <label for="checkOutTime" class="form-label">Giờ ra</label>
+                    <input type="text" class="form-control timepicker" id="checkOutTime" placeholder="HH:MM">
+                </div>
+                <div class="mb-3">
+                    <label for="attendanceStatus" class="form-label">Trạng thái</label>
+                    <select class="form-control" id="attendanceStatus">
+                        <option value="not_absent">Có mặt</option>
+                        <option value="permitted_absence">Nghỉ có phép</option>
+                        <option value="unpermitted_absence">Nghỉ không phép</option>
+                        <option value="regime_absence">Nghỉ chế độ</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="paidWorkDays" class="form-label">Số công hưởng lương</label>
+                    <input type="number" step="0.1" class="form-control" id="paidWorkDays" value="1">
+                </div>
+                <div class="mb-3">
+                    <label for="actualWorkDays" class="form-label">Số công thực tế</label>
+                    <input type="number" step="0.1" class="form-control" id="actualWorkDays" value="1">
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i> Hủy</button>
                 <button type="button" class="btn btn-primary" onclick="saveAttendance()"><i class="bi bi-save me-1"></i> Lưu</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal để tải file Excel lên -->
+<div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importExcelModalLabel">Nhập dữ liệu từ Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'import_attendance_from_excel' record_id=attendance_record.id %}" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="excel_file" class="form-label">Chọn file Excel (.xlsx)</label>
+                        <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        File Excel cần có định dạng giống file đã xuất: cột đầu tiên là tên nhân viên (có mã trong ngoặc), các cột tiếp theo là dữ liệu chấm công theo ngày.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i> Hủy</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload me-1"></i> Tải lên</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -300,6 +311,7 @@ function openAttendanceModal(recordId, employeeId, date) {
             modal.show();
         })
         .catch(error => {
+            console.error('Lỗi khi tải dữ liệu:', error);
             alert('Lỗi khi tải dữ liệu: ' + error.message);
         });
 }
@@ -346,17 +358,23 @@ function saveAttendance() {
         },
         body: JSON.stringify(payload),
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         console.log('Phản hồi từ server:', data);
         if (data.status === 'success') {
             alert(data.message);
             location.reload();
         } else {
-            alert(data.message);
+            alert(data.message || 'Lưu dữ liệu không thành công!');
         }
     })
     .catch(error => {
+        console.error('Lỗi khi lưu dữ liệu:', error);
         alert('Lỗi khi lưu dữ liệu: ' + error.message);
     });
 }
@@ -405,8 +423,8 @@ function filterTable() {
 }
 
 /* Thiết kế tiêu đề */
-.text-primary {
-    color: #2980b9 !important;
+.text-dark {
+    color: #333 !important;
 }
 
 .page-title {
@@ -416,10 +434,10 @@ function filterTable() {
 
 /* Thiết kế nút */
 .custom-btn {
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 6px 12px; /* Giảm padding để button nhỏ gọn hơn */
+    font-size: 14px; /* Giảm kích thước chữ */
     font-weight: 500;
-    border-radius: 8px;
+    border-radius: 6px; /* Giảm độ bo góc */
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
@@ -446,6 +464,11 @@ function filterTable() {
 .custom-btn-secondary:hover {
     background-color: #5a6268;
     transform: translateY(-2px);
+}
+
+/* Điều chỉnh khoảng cách giữa các button */
+.header-section .d-flex {
+    gap: 8px; /* Giảm khoảng cách giữa các button */
 }
 
 /* Thiết kế thông tin tổng quan */
@@ -503,7 +526,7 @@ function filterTable() {
     position: sticky;
     top: 0;
     z-index: 1;
-    font-size: 14px;
+    font-size: 16px;
     white-space: nowrap;
 }
 
@@ -512,7 +535,7 @@ function filterTable() {
     text-align: center;
     border-bottom: 1px solid #e9ecef;
     color: #555;
-    font-size: 13px;
+    font-size: 15px;
 }
 
 .custom-table tbody tr:hover {
@@ -548,7 +571,7 @@ function filterTable() {
     text-overflow: ellipsis;
     line-height: 1.4em;
     max-height: 2.8em; /* 2 dòng × 1.4em */
-    font-size: 14px; /* Tăng kích thước chữ */
+    font-size: 16px; /* Tăng kích thước chữ */
     font-weight: 600; /* Làm đậm chữ */
     color: #333; /* Màu đậm hơn */
 }

@@ -1,281 +1,151 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}
-Bảng chấm công tổng hợp - Ms.Vy English
-{% endblock %}
+{% block title %}Chi tiết bảng chấm công tổng hợp{% endblock %}
 
 {% block module_sidebar %}
-<ul class="nav flex-column">
-    <li class="nav-item">
-        <a class="nav-link {% if 'work-shifts' in request.path %}active{% endif %}" href="{% url 'work_shift_list' %}">
-            <i class="bi bi-calendar-check me-2"></i> Ca làm việc
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if request.path == '/attendance-details/' %}active{% endif %}" href="{% url 'attendance_detail_list' %}">
-            <i class="bi bi-list-check me-2"></i> Bảng chấm công chi tiết
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if request.path == '/attendance-summary/' %}active{% endif %}" href="{% url 'attendance_summary' %}">
-            <i class="bi bi-bar-chart me-2"></i> Bảng chấm công tổng hợp
-        </a>
-    </li>
-</ul>
+{% include "attendance/sidebar.html" %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .badge-transferred {
+        background-color: #28a745;
+        color: white;
+    }
+    .badge-not-transferred {
+        background-color: #6c757d;
+        color: white;
+    }
+    #loading-message {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 20px;
+        border-radius: 5px;
+        z-index: 9999;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 header-section">
-    <h2 class="text-center fw-bold text-primary page-title">Bảng chấm công tổng hợp {{ attendance_summary.date_range }}</h2>
-    <div class="d-flex gap-2 button-group">
-        <button class="custom-btn custom-btn-primary" onclick="transferToPayroll({{ attendance_summary.id }})">
-            <i class="bi bi-wallet me-2"></i> Chuyển tính lương
-        </button>
-        <button class="custom-btn custom-btn-success" onclick="sendConfirmation({{ attendance_summary.id }})">
-            <i class="bi bi-check-circle me-2"></i> Gửi xác nhận
-        </button>
-        <a href="{% url 'attendance_summary' %}" class="custom-btn custom-btn-secondary">
-            <i class="bi bi-arrow-left me-2"></i> Quay lại
-        </a>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Chi tiết bảng chấm công tổng hợp</h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'attendance_summary' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Quay lại
+            </a>
+            {% if not attendance_summary.transferred %}
+<a href="{% url 'transfer_to_payroll' summary_id=attendance_summary.id %}" class="btn btn-primary">
+    <i class="bi bi-arrow-right-circle me-1"></i> Chuyển tính lương
+</a>
+{% else %}
+<button disabled class="btn btn-success">
+    <i class="bi bi-check-circle me-1"></i> Đã chuyển tính lương
+</button>
+{% endif %}
+        </div>
     </div>
-</div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <!-- Thông tin tổng quan -->
-        <div class="info-section mb-4">
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Thông tin bảng chấm công</h5>
+            <div id="status-badge-{{ attendance_summary.id }}">
+                {% if attendance_summary.transferred %}
+                <span class="badge bg-success">Đã chuyển</span>
+                {% else %}
+                <span class="badge bg-secondary">Chưa chuyển</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
             <div class="row">
-                <div class="col-md-4">
-                    <p class="info-label"><strong>Tên bảng chấm công:</strong></p>
-                    <p class="info-value">{{ attendance_summary.name }}</p>
+                <div class="col-md-6">
+                    <p><strong>Tên bảng chấm công:</strong> {{ attendance_summary.name }}</p>
+                    <p><strong>Vị trí áp dụng:</strong> {{ attendance_summary.position.name }}</p>
                 </div>
-                <div class="col-md-4">
-                    <p class="info-label"><strong>Vị trí áp dụng:</strong></p>
-                    <p class="info-value">{{ attendance_summary.position.name }}</p>
-                </div>
-                <div class="col-md-4">
-                    <p class="info-label"><strong>Khoảng thời gian:</strong></p>
-                    <p class="info-value">{{ attendance_summary.date_range }}</p>
+                <div class="col-md-6">
+                    <p><strong>Số bảng chấm công chi tiết:</strong> {{ attendance_summary.attendance_records.count }}</p>
+                    <p><strong>Số công chuẩn:</strong> <span id="standard-workdays">{{ employee_data.0.standard_work_days|default:"0" }}</span></p>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Tiêu đề bảng -->
-        <h4 class="table-title mb-3">Danh sách nhân viên</h4>
-
-        <!-- Bảng chấm công tổng hợp -->
-        <div class="table-responsive">
-            <table class="table table-hover custom-table">
-                <thead>
-                    <tr>
-                        <th>Mã nhân viên</th>
-                        <th>Họ và tên</th>
-                        <th>Vị trí</th>
-                        <th>Số công chuẩn</th>
-                        <th>Công ngày thường</th>
-                        <th>Công ngày nghỉ</th>
-                        <th>Công nghỉ chế độ</th>
-                        <th>Đi muộn/về sớm (phút)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for data in employee_data %}
-                    <tr>
-                        <td>{{ data.employee.code }}</td>
-                        <td>{{ data.employee.last_name }} {{ data.employee.first_name }}</td>
-                        <td>{{ data.employee.position.name }}</td>
-                        <td>{{ data.standard_work_days|floatformat:2 }}</td>
-                        <td>{{ data.normal_work_days|floatformat:2 }}</td>
-                        <td>{{ data.rest_work_days|floatformat:2 }}</td>
-                        <td>{{ data.regime_work_days|floatformat:2 }}</td>
-                        <td>{{ data.late_early_minutes }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="text-center text-muted">Chưa có nhân viên nào thuộc vị trí này.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Dữ liệu chấm công nhân viên</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã NV</th>
+                            <th>Họ tên</th>
+                            <th>Công chuẩn</th>
+                            <th>Công thực tế</th>
+                            <th>Nghỉ không lương</th>
+                            <th>Tỷ lệ hưởng</th>
+                            <th>Công ngày thường</th>
+                            <th>Công ngày nghỉ</th>
+                            <th>Đi muộn/về sớm (phút)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in employee_data %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ data.employee.employee_id|default:data.employee.id }}</td>
+                            <td>{{ data.employee.full_name }}</td>
+                            <td>{{ data.standard_work_days|floatformat:1 }}</td>
+                            <td>{{ data.actual_workdays|floatformat:1 }}</td>
+                            <td>{{ data.unpaid_leave|floatformat:1 }}</td>
+                            <td>{{ data.attendance_ratio|floatformat:2 }}</td>
+                            <td>{{ data.normal_work_days|floatformat:1 }}</td>
+                            <td>{{ data.rest_work_days|floatformat:1 }}</td>
+                            <td>{{ data.late_early_minutes }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    Không có dữ liệu chấm công
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
-<script>
-function transferToPayroll(summaryId) {
-    fetch(`/attendance/attendance-summary/transfer-to-payroll/${summaryId}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}',
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert(data.message);
-        } else {
-            alert(data.message);
-        }
-    })
-    .catch(error => {
-        alert('Lỗi khi chuyển tính lương: ' + error.message);
-    });
-}
+<!-- Thông báo đang xử lý -->
+<div id="loading-message">
+    <div class="d-flex align-items-center">
+        <div class="spinner-border me-2" role="status">
+            <span class="visually-hidden">Đang xử lý...</span>
+        </div>
+        <span>Đang chuyển dữ liệu sang tính lương...</span>
+    </div>
+</div>
 
-function sendConfirmation(summaryId) {
-    fetch(`/attendance/attendance-summary/send-confirmation/${summaryId}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}',
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert(data.message);
-        } else {
-            alert(data.message);
-        }
-    })
-    .catch(error => {
-        alert('Lỗi khi gửi xác nhận: ' + error.message);
-    });
-}
-</script>
+<!-- Container cho thông báo -->
+<div id="alert-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+{% endblock %}
 
-<style>
-/* Thiết kế header */
-.header-section {
-    flex-wrap: nowrap !important;
-    align-items: center;
-}
-
-/* Thiết kế tiêu đề */
-.text-primary {
-    color: #2980b9 !important;
-}
-
-.page-title {
-    font-size: 24px;
-    white-space: nowrap; /* Đảm bảo tiêu đề không xuống dòng */
-}
-
-/* Thiết kế nút */
-.button-group {
-    flex-wrap: nowrap !important;
-}
-
-.custom-btn {
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
-}
-
-.custom-btn-primary {
-    background-color: #2980b9;
-    color: white;
-    border: none;
-}
-
-.custom-btn-primary:hover {
-    background-color: #1c6ea4;
-    transform: translateY(-2px);
-}
-
-.custom-btn-success {
-    background-color: #27ae60;
-    color: white;
-    border: none;
-}
-
-.custom-btn-success:hover {
-    background-color: #219653;
-    transform: translateY(-2px);
-}
-
-.custom-btn-secondary {
-    background-color: #6c757d;
-    color: white;
-    border: none;
-}
-
-.custom-btn-secondary:hover {
-    background-color: #5a6268;
-    transform: translateY(-2px);
-}
-
-/* Thiết kế thông tin tổng quan */
-.info-section {
-    background-color: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.info-label {
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 5px;
-}
-
-.info-value {
-    color: #555;
-    font-size: 16px;
-}
-
-/* Thiết kế tiêu đề bảng */
-.table-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: #333;
-    border-left: 4px solid #2980b9;
-    padding-left: 10px;
-}
-
-/* Thiết kế bảng */
-.custom-table {
-    border-collapse: separate;
-    border-spacing: 0;
-    background-color: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.custom-table thead th {
-    background-color: #2980b9;
-    color: white;
-    font-weight: 600;
-    padding: 15px;
-    text-align: center;
-    border-bottom: 2px solid #1c6ea4;
-}
-
-.custom-table tbody td {
-    padding: 12px 15px;
-    text-align: center;
-    border-bottom: 1px solid #e9ecef;
-    color: #555;
-}
-
-.custom-table tbody tr:hover {
-    background-color: #f1f5f9;
-    transition: background-color 0.3s ease;
-}
-
-.custom-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.table-responsive {
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-}
-</style>
+{% block extra_js %}
+<script src="{% static 'js/attendance.js' %}"></script>
 {% endblock %}

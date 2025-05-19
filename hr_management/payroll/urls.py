@@ -2,21 +2,22 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path('', views.payroll_list, name='payroll_list'),
+    path('create/', views.payroll_create, name='payroll_create'),
+    path('<int:pk>/', views.payroll_detail, name='payroll_detail'),
+    path('<int:pk>/update/', views.payroll_update, name='payroll_update'),
+    path('<int:pk>/activate/', views.activate_payroll, name='activate_payroll'),
+    path('<int:pk>/disable/', views.disable_payroll, name='disable_payroll'),
+    path('<int:pk>/export/', views.export_payroll_excel, name='export_payroll_excel'),
 
+    path('<int:payroll_id>/detail/<int:detail_id>/', views.payroll_employee_detail, name='payroll_employee_detail'),
+    path('calculate/', views.calculate_payroll, name='calculate_payroll'),
 
-	# Mẫu bảng lương
-	path('mau-bang-luong/', views.payroll_template_list, name='payroll_template_list'),
-	path('mau-bang-luong/them/', views.payroll_template_create, name='payroll_template_create'),
-	path('mau-bang-luong/<int:pk>/', views.payroll_template_detail, name='payroll_template_detail'),
-	path('mau-bang-luong/<int:pk>/cap-nhat/', views.payroll_template_update, name='payroll_template_update'),
+    path('<int:pk>/export/', views.export_payroll, name='export_payroll'),
 
+# Thêm URL cho chức năng chuyển tính lương từ bảng chấm công
+    path('transfer/<int:attendance_summary_id>/', views.transfer_to_payroll, name='transfer_to_payroll'),
+    # Thêm URL cho chức năng chuyển tính lương từ bảng chấm công
+    path('transfer/<int:attendance_summary_id>/', views.transfer_to_payroll, name='transfer_to_payroll'),
 
-	# Bảng lương
-	path('bang-luong/', views.payroll_list, name='payroll_list'),
-	path('bang-luong/them/', views.payroll_create, name='payroll_create'),
-	path('bang-luong/<int:pk>/', views.payroll_detail, name='payroll_detail'),
-	path('chi-tiet-luong/<int:pk>/cap-nhat/', views.payroll_detail_update, name='payroll_detail_update'),
-
-
-	path('mau-bang-luong/<int:pk>/', views.payroll_template_detail, name='payroll_template_detail'),
 ]

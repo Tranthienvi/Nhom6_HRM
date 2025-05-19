@@ -3,727 +3,749 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum
 from django.core.paginator import Paginator
-from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
-import csv
-import datetime
-from .forms import PayrollPeriodForm
+from django.http import HttpResponse, JsonResponse
+from decimal import Decimal
+import json
+import xlsxwriter
+from io import BytesIO
+from datetime import datetime
+from payroll.models import PayrollDeduction
+from .models import Payroll, PayrollDetail, PayrollAllowance
+from .forms import PayrollForm, PayrollDetailForm
+from employees.models import Employee, Position
+from attendance.models import AttendanceSummary, DailyAttendance
 
-from .models import (
-	PayrollTemplate, PayrollTemplateItem, PayrollPeriod,
-	PayrollData, PayrollDataDetail, Payroll, PayrollDetail,
-	PayrollPayment, PayrollPaymentDetail, Payslip
-)
-from .forms import (
-	PayrollTemplateForm, PayrollTemplateItemForm,
-	PayrollDataForm, PayrollDataDetailForm, PayrollForm, PayrollDetailForm,
-	PayrollPaymentForm, PayrollPaymentDetailForm, PayslipForm,
-	PayrollFilterForm, PayrollDataFilterForm, PayrollPaymentFilterForm
-)
-
-def payroll_template_detail(request, pk):
-	# Lấy đối tượng PayrollTemplate theo pk
-	payroll_template = get_object_or_404(PayrollTemplate, pk=pk)
-
-	# Trả về chi tiết mẫu bảng lương
-	return render(request, 'payroll_template_detail.html', {'payroll_template': payroll_template})
-
-# Payroll Template Views
-@login_required
-def payroll_template_list(request):
-	search_query = request.GET.get('search', '')
-	templates = PayrollTemplate.objects.all()
-
-	if search_query:
-		templates = templates.filter(
-			Q(code__icontains=search_query) |
-			Q(name__icontains=search_query)
-		)
-
-	paginator = Paginator(templates, 10)
-	page_number = request.GET.get('page')
-	page_obj = paginator.get_page(page_number)
-
-	context = {
-		'page_obj': page_obj,
-		'search_query': search_query,
-	}
-	return render(request, 'payroll/template_list.html', context)
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+import json
+from decimal import Decimal
+from .models import Employee
 
 
 @login_required
-def payroll_template_detail(request, pk):
-	template = get_object_or_404(PayrollTemplate, pk=pk)
-	items = template.items.all().order_by('order')
+@require_POST
+def calculate_tax_api(request, employee_id):
+	"""API để tính thuế TNCN cho nhân viên"""
+	try:
+		employee = get_object_or_404(Employee, pk=employee_id)
+		data = json.loads(request.body)
+		gross_income = Decimal(str(data.get('gross_income', 0)))
 
-	context = {
-		'template': template,
-		'items': items,
-	}
-	return render(request, 'payroll/template_detail.html', context)
+		# Tính thu nhập tính thuế
+		taxable_income = employee.calculate_taxable_income(gross_income)
 
+		# Tính thuế TNCN
+		income_tax = employee.calculate_income_tax(gross_income)
 
-@login_required
-def payroll_template_create(request):
-	if request.method == 'POST':
-		form = PayrollTemplateForm(request.POST)
-		if form.is_valid():
-			template = form.save()
-			messages.success(request, f'Mẫu bảng lương {template.name} đã được tạo thành công')
-			return redirect('payroll_template_detail', pk=template.pk)
-	else:
-		form = PayrollTemplateForm()
+		# Tính lương thực lĩnh
+		net_salary = gross_income - income_tax
 
-	context = {
-		'form': form,
-		'title': 'Thêm mẫu bảng lương mới',
-	}
-	return render(request, 'payroll/template_form.html', context)
+		return JsonResponse({
+			'gross_income': float(gross_income),
+			'taxable_income': float(taxable_income),
+			'income_tax': float(income_tax),
+			'net_salary': float(net_salary)
+		})
+	except Exception as e:
+		return JsonResponse({'error': str(e)}, status=400)
 
 
-@login_required
-def payroll_template_update(request, pk):
-	template = get_object_or_404(PayrollTemplate, pk=pk)
-	if request.method == 'POST':
-		form = PayrollTemplateForm(request.POST, instance=template)
-		if form.is_valid():
-			template = form.save()
-			messages.success(request, f'Mẫu bảng lương {template.name} đã được cập nhật')
-			return redirect('payroll_template_detail', pk=template.pk)
-	else:
-		form = PayrollTemplateForm(instance=template)
-
-	context = {
-		'form': form,
-		'template': template,
-		'title': 'Cập nhật mẫu bảng lương',
-	}
-	return render(request, 'payroll/template_form.html', context)
-
-
-@login_required
-def payroll_template_item_create(request, template_id):
-	template = get_object_or_404(PayrollTemplate, pk=template_id)
-	if request.method == 'POST':
-		form = PayrollTemplateItemForm(request.POST)
-		if form.is_valid():
-			item = form.save(commit=False)
-			item.template = template
-			item.save()
-			messages.success(request, f'Mục {item.name} đã được thêm vào mẫu bảng lương')
-			return redirect('payroll_template_detail', pk=template.pk)
-	else:
-		form = PayrollTemplateItemForm()
-
-	context = {
-		'form': form,
-		'template': template,
-		'title': 'Thêm mục vào mẫu bảng lương',
-	}
-	return render(request, 'payroll/template_item_form.html', context)
-
-
-@login_required
-def payroll_template_item_update(request, pk):
-	item = get_object_or_404(PayrollTemplateItem, pk=pk)
-	if request.method == 'POST':
-		form = PayrollTemplateItemForm(request.POST, instance=item)
-		if form.is_valid():
-			item = form.save()
-			messages.success(request, f'Mục {item.name} đã được cập nhật')
-			return redirect('payroll_template_detail', pk=item.template.pk)
-	else:
-		form = PayrollTemplateItemForm(instance=item)
-
-	context = {
-		'form': form,
-		'item': item,
-		'template': item.template,
-		'title': 'Cập nhật mục bảng lương',
-	}
-	return render(request, 'payroll/template_item_form.html', context)
-
-
-# Payroll Period Views
-@login_required
-def payroll_period_list(request):
-	search_query = request.GET.get('search', '')
-	periods = PayrollPeriod.objects.all().order_by('-start_date')
-
-	if search_query:
-		periods = periods.filter(
-			Q(code__icontains=search_query) |
-			Q(name__icontains=search_query)
-		)
-
-	paginator = Paginator(periods, 10)
-	page_number = request.GET.get('page')
-	page_obj = paginator.get_page(page_number)
-
-	context = {
-		'page_obj': page_obj,
-		'search_query': search_query,
-	}
-	return render(request, 'payroll/period_list.html', context)
-
-
-@login_required
-def payroll_period_detail(request, pk):
-	period = get_object_or_404(PayrollPeriod, pk=pk)
-	payroll_data = period.payroll_data.all()
-	payrolls = period.payrolls.all()
-
-	context = {
-		'period': period,
-		'payroll_data': payroll_data,
-		'payrolls': payrolls,
-	}
-	return render(request, 'payroll/period_detail.html', context)
-
-
-@login_required
-def payroll_period_create(request):
-	if request.method == 'POST':
-		form = PayrollPeriodForm(request.POST)
-		if form.is_valid():
-			period = form.save()
-			messages.success(request, f'Kỳ lương {period.name} đã được tạo thành công')
-			return redirect('payroll_period_detail', pk=period.pk)
-	else:
-		form = PayrollPeriodForm()
-
-	context = {
-		'form': form,
-		'title': 'Thêm kỳ lương mới',
-	}
-	return render(request, 'payroll/period_form.html', context)
-
-
-@login_required
-def payroll_period_update(request, pk):
-	period = get_object_or_404(PayrollPeriod, pk=pk)
-	if request.method == 'POST':
-		form = PayrollPeriodForm(request.POST, instance=period)
-		if form.is_valid():
-			period = form.save()
-			messages.success(request, f'Kỳ lương {period.name} đã được cập nhật')
-			return redirect('payroll_period_detail', pk=period.pk)
-	else:
-		form = PayrollPeriodForm(instance=period)
-
-	context = {
-		'form': form,
-		'period': period,
-		'title': 'Cập nhật kỳ lương',
-	}
-	return render(request, 'payroll/period_form.html', context)
-
-
-# Payroll Data Views
-@login_required
-def payroll_data_list(request):
-	form = PayrollDataFilterForm(request.GET)
-	payroll_data = PayrollData.objects.all().order_by('-period__start_date')
-
-	if form.is_valid():
-		period = form.cleaned_data.get('period')
-		department = form.cleaned_data.get('department')
-		status = form.cleaned_data.get('status')
-		search = form.cleaned_data.get('search')
-
-		if period:
-			payroll_data = payroll_data.filter(period=period)
-
-		if department:
-			payroll_data = payroll_data.filter(department=department)
-
-		if status:
-			payroll_data = payroll_data.filter(status=status)
-
-		if search:
-			payroll_data = payroll_data.filter(
-				Q(period__name__icontains=search) |
-				Q(department__name__icontains=search)
-			)
-
-	paginator = Paginator(payroll_data, 10)
-	page_number = request.GET.get('page')
-	page_obj = paginator.get_page(page_number)
-
-	context = {
-		'page_obj': page_obj,
-		'form': form,
-	}
-	return render(request, 'payroll/data_list.html', context)
-
-
-@login_required
-def payroll_data_detail(request, pk):
-	payroll_data = get_object_or_404(PayrollData, pk=pk)
-	details = payroll_data.details.all()
-
-	context = {
-		'payroll_data': payroll_data,
-		'details': details,
-	}
-	return render(request, 'payroll/data_detail.html', context)
-
-
-@login_required
-def payroll_data_create(request):
-	if request.method == 'POST':
-		form = PayrollDataForm(request.POST)
-		if form.is_valid():
-			payroll_data = form.save(commit=False)
-			payroll_data.status = 'draft'
-			payroll_data.save()
-			messages.success(request, f'Dữ liệu tính lương cho {payroll_data.department.name} đã được tạo thành công')
-			return redirect('payroll_data_detail', pk=payroll_data.pk)
-	else:
-		form = PayrollDataForm()
-
-	context = {
-		'form': form,
-		'title': 'Thêm dữ liệu tính lương mới',
-	}
-	return render(request, 'payroll/data_form.html', context)
-
-
-@login_required
-def payroll_data_update(request, pk):
-	payroll_data = get_object_or_404(PayrollData, pk=pk)
-	if request.method == 'POST':
-		form = PayrollDataForm(request.POST, instance=payroll_data)
-		if form.is_valid():
-			payroll_data = form.save()
-			messages.success(request, f'Dữ liệu tính lương cho {payroll_data.department.name} đã được cập nhật')
-			return redirect('payroll_data_detail', pk=payroll_data.pk)
-	else:
-		form = PayrollDataForm(instance=payroll_data)
-
-	context = {
-		'form': form,
-		'payroll_data': payroll_data,
-		'title': 'Cập nhật dữ liệu tính lương',
-	}
-	return render(request, 'payroll/data_form.html', context)
-
-
-@login_required
-def payroll_data_submit(request, pk):
-	payroll_data = get_object_or_404(PayrollData, pk=pk)
-	if payroll_data.status == 'draft':
-		payroll_data.submit(request.user.username)
-		messages.success(request, f'Dữ liệu tính lương cho {payroll_data.department.name} đã được nộp')
-	return redirect('payroll_data_detail', pk=payroll_data.pk)
-
-
-@login_required
-def payroll_data_approve(request, pk):
-	payroll_data = get_object_or_404(PayrollData, pk=pk)
-	if payroll_data.status == 'submitted':
-		payroll_data.approve(request.user.username)
-		messages.success(request, f'Dữ liệu tính lương cho {payroll_data.department.name} đã được duyệt')
-	return redirect('payroll_data_detail', pk=payroll_data.pk)
-
-
-@login_required
-def payroll_data_reject(request, pk):
-	payroll_data = get_object_or_404(PayrollData, pk=pk)
-	if payroll_data.status == 'submitted':
-		payroll_data.reject()
-		messages.success(request, f'Dữ liệu tính lương cho {payroll_data.department.name} đã bị từ chối')
-	return redirect('payroll_data_detail', pk=payroll_data.pk)
-
-
-@login_required
-def payroll_data_detail_create(request, payroll_data_id):
-	payroll_data = get_object_or_404(PayrollData, pk=payroll_data_id)
-	if request.method == 'POST':
-		form = PayrollDataDetailForm(request.POST)
-		if form.is_valid():
-			detail = form.save(commit=False)
-			detail.payroll_data = payroll_data
-			detail.save()
-			messages.success(request, f'Dữ liệu cho nhân viên {detail.employee.full_name} đã được thêm thành công')
-			return redirect('payroll_data_detail', pk=payroll_data.pk)
-	else:
-		# Lấy danh sách nhân viên thuộc phòng ban
-		employees = Employee.objects.filter(department=payroll_data.department, is_active=True)
-		form = PayrollDataDetailForm()
-		form.fields['employee'].queryset = employees
-
-	context = {
-		'form': form,
-		'payroll_data': payroll_data,
-		'title': 'Thêm dữ liệu nhân viên',
-	}
-	return render(request, 'payroll/data_detail_form.html', context)
-
-
-@login_required
-def payroll_data_detail_update(request, pk):
-	detail = get_object_or_404(PayrollDataDetail, pk=pk)
-	if request.method == 'POST':
-		form = PayrollDataDetailForm(request.POST, instance=detail)
-		if form.is_valid():
-			detail = form.save()
-			messages.success(request, f'Dữ liệu cho nhân viên {detail.employee.full_name} đã được cập nhật')
-			return redirect('payroll_data_detail', pk=detail.payroll_data.pk)
-	else:
-		form = PayrollDataDetailForm(instance=detail)
-
-	context = {
-		'form': form,
-		'detail': detail,
-		'payroll_data': detail.payroll_data,
-		'title': 'Cập nhật dữ liệu nhân viên',
-	}
-	return render(request, 'payroll/data_detail_form.html', context)
-
-
-# Payroll Views
 @login_required
 def payroll_list(request):
-	form = PayrollFilterForm(request.GET)
-	payrolls = Payroll.objects.all().order_by('-period__start_date')
+    """Hiển thị danh sách bảng lương"""
+    search_query = request.GET.get('search', '')
+    status_filter = request.GET.get('status', '')
 
-	if form.is_valid():
-		period = form.cleaned_data.get('period')
-		department = form.cleaned_data.get('department')
-		status = form.cleaned_data.get('status')
-		search = form.cleaned_data.get('search')
+    # Lấy danh sách bảng lương
+    payrolls = Payroll.objects.all()
 
-		if period:
-			payrolls = payrolls.filter(period=period)
+    # Lọc theo từ khóa tìm kiếm
+    if search_query:
+        payrolls = payrolls.filter(
+            Q(name__icontains=search_query) |
+            Q(position__name__icontains=search_query)
+        )
 
-		if status:
-			payrolls = payrolls.filter(status=status)
+    # Lọc theo trạng thái
+    if status_filter:
+        payrolls = payrolls.filter(status=status_filter)
 
-		if search:
-			payrolls = payrolls.filter(
-				Q(code__icontains=search) |
-				Q(name__icontains=search)
-			)
+    # Phân trang
+    paginator = Paginator(payrolls, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
-		if department:
-			# Lọc theo phòng ban (cần join với PayrollDetail và Employee)
-			payrolls = payrolls.filter(details__employee__department=department).distinct()
 
-	paginator = Paginator(payrolls, 10)
-	page_number = request.GET.get('page')
-	page_obj = paginator.get_page(page_number)
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'status_filter': status_filter,
+    }
 
-	context = {
-		'page_obj': page_obj,
-		'form': form,
-	}
-	return render(request, 'payroll/payroll_list.html', context)
+    return render(request, 'payroll/payroll_list.html', context)
 
 
 @login_required
-def payroll_detail(request, pk):
-	payroll = get_object_or_404(Payroll, pk=pk)
-	details = payroll.details.all()
-	payments = payroll.payments.all()
+def process_attendance_data(payroll, attendance_summary):
+    """
+    Xử lý dữ liệu từ bảng chấm công để tạo chi tiết lương
+    """
+    # Lấy danh sách nhân viên từ bảng chấm công
+    employees = Employee.objects.filter(position=attendance_summary.position)
 
-	# Tính tổng
-	total_gross = details.aggregate(total=Sum('gross_salary'))['total'] or 0
-	total_net = details.aggregate(total=Sum('net_salary'))['total'] or 0
-	total_paid = payments.aggregate(total=Sum('paid_amount'))['total'] or 0
+    # Số công chuẩn
+    standard_workdays = getattr(attendance_summary, 'standard_workdays', 22) or 24
 
-	context = {
-		'payroll': payroll,
-		'details': details,
-		'payments': payments,
-		'total_gross': total_gross,
-		'total_net': total_net,
-		'total_paid': total_paid,
-	}
-	return render(request, 'payroll/payroll_detail.html', context)
+    # Tính lương cho từng nhân viên
+    for employee in employees:
+        # Lấy lương cơ bản từ thông tin nhân viên
+        basic_salary = getattr(employee, 'basic_salary', 0) or 0
+
+        # Tìm dữ liệu chấm công của nhân viên
+        try:
+            from attendance.models import EmployeeAttendance
+            employee_attendance = EmployeeAttendance.objects.filter(
+                employee=employee,
+                attendance_summary=attendance_summary
+            ).first()
+        except Exception:
+            employee_attendance = None
+
+        # Nếu có dữ liệu chấm công
+        if employee_attendance:
+            actual_workdays = employee_attendance.workdays
+            unpaid_leave = employee_attendance.unpaid_leave
+            attendance_ratio = employee_attendance.total_paid_days / standard_workdays if standard_workdays > 0 else 0
+        else:
+            # Nếu không có dữ liệu chấm công, giả định làm đủ công
+            actual_workdays = standard_workdays
+            unpaid_leave = 0
+            attendance_ratio = 1.0
+
+        # Tính lương theo ngày công
+        from decimal import Decimal
+        gross_salary = int(basic_salary * Decimal(str(attendance_ratio)))
+
+        # Tính các khoản khấu trừ (giả định 10% tổng thu nhập)
+        deductions_amount = int(gross_salary * Decimal('0.1'))
+
+        # Tính lương thực lĩnh
+        net_salary = gross_salary - deductions_amount
+
+        # Debug: In ra giá trị để kiểm tra
+        print(f"Employee: {employee.full_name}")
+        print(f"Basic salary: {basic_salary}")
+        print(f"Gross salary: {gross_salary}")
+        print(f"Deductions: {deductions_amount}")
+        print(f"Net salary: {net_salary}")
+
+        # Tạo chi tiết lương - không sử dụng deduction_data nếu không có cột
+        try:
+            # Kiểm tra xem có cột deduction_data không
+            from django.db import connection
+            cursor = connection.cursor()
+            cursor.execute("PRAGMA table_info(payroll_payrolldetail);")
+            columns = [col[1] for col in cursor.fetchall()]
+
+            if 'deduction_data' in columns:
+                # Nếu có cột deduction_data
+                deduction_data = {
+                    'deductions': [
+                        {
+                            'name': 'Bảo hiểm xã hội',
+                            'amount': 8,
+                            'is_percentage': True,
+                            'value': int(gross_salary * Decimal('0.08'))
+                        },
+                        {
+                            'name': 'Bảo hiểm y tế',
+                            'amount': 1.5,
+                            'is_percentage': True,
+                            'value': int(gross_salary * Decimal('0.015'))
+                        },
+                        {
+                            'name': 'Bảo hiểm thất nghiệp',
+                            'amount': 1,
+                            'is_percentage': True,
+                            'value': int(gross_salary * Decimal('0.01'))
+                        }
+                    ]
+                }
+
+                payroll_detail = PayrollDetail.objects.create(
+                    payroll=payroll,
+                    employee=employee,
+                    basic_salary=basic_salary,
+                    attendance_ratio=attendance_ratio,
+                    standard_workdays=standard_workdays,
+                    actual_workdays=actual_workdays,
+                    unpaid_leave=unpaid_leave,
+                    gross_salary=gross_salary,
+                    deduction_amount=deductions_amount,
+                    net_salary=net_salary,  # Đảm bảo net_salary được lưu
+                    deduction_data=deduction_data
+                )
+            else:
+                # Nếu không có cột deduction_data
+                payroll_detail = PayrollDetail.objects.create(
+                    payroll=payroll,
+                    employee=employee,
+                    basic_salary=basic_salary,
+                    attendance_ratio=attendance_ratio,
+                    standard_workdays=standard_workdays,
+                    actual_workdays=actual_workdays,
+                    unpaid_leave=unpaid_leave,
+                    gross_salary=gross_salary,
+                    deduction_amount=deductions_amount,
+                    net_salary=net_salary  # Đảm bảo net_salary được lưu
+                )
+        except Exception as e:
+            # Nếu có lỗi, thử tạo không có deduction_data
+            print(f"Error creating payroll detail: {str(e)}")
+            payroll_detail = PayrollDetail.objects.create(
+                payroll=payroll,
+                employee=employee,
+                basic_salary=basic_salary,
+                attendance_ratio=attendance_ratio,
+                standard_workdays=standard_workdays,
+                actual_workdays=actual_workdays,
+                unpaid_leave=unpaid_leave,
+                gross_salary=gross_salary,
+                deduction_amount=deductions_amount,
+                net_salary=net_salary  # Đảm bảo net_salary được lưu
+            )
 
 
 @login_required
 def payroll_create(request):
-	if request.method == 'POST':
-		form = PayrollForm(request.POST)
-		if form.is_valid():
-			payroll = form.save(commit=False)
-			payroll.status = 'draft'
-			payroll.created_by = request.user.username
-			payroll.save()
-			messages.success(request, f'Bảng lương {payroll.name} đã được tạo thành công')
-			return redirect('payroll_detail', pk=payroll.pk)
-	else:
-		form = PayrollForm()
+    if request.method == 'POST':
+        form = PayrollForm(request.POST)
+        if form.is_valid():
+            payroll = form.save(commit=False)
+            payroll.user = request.user  # Gán người dùng hiện tại cho trường user
+            payroll.save()
+
+            # Xử lý dữ liệu từ bảng chấm công nếu có
+            attendance_summary = form.cleaned_data.get('attendance_summary')
+            if attendance_summary:
+                # Gọi hàm xử lý dữ liệu từ bảng chấm công
+                process_attendance_data(payroll, attendance_summary)
+
+            messages.success(request, 'Bảng lương đã được tạo thành công.')
+            return redirect('payroll_detail', pk=payroll.pk)
+    else:
+        form = PayrollForm()
+
+    return render(request, 'payroll/payroll_form.html', {
+        'form': form,
+        'title': 'Tạo bảng lương mới'
+    })
+
+
+
+@login_required
+def payroll_detail(request, pk):
+	"""Xem chi tiết bảng lương"""
+	payroll = get_object_or_404(Payroll, pk=pk)
+	details = PayrollDetail.objects.filter(payroll=payroll)
+
+
 
 	context = {
-		'form': form,
-		'title': 'Tạo bảng lương mới',
+		'payroll': payroll,
+		'details': details,
 	}
-	return render(request, 'payroll/payroll_form.html', context)
+
+	return render(request, 'payroll/payroll_detail.html', context)
 
 
 @login_required
 def payroll_update(request, pk):
-	payroll = get_object_or_404(Payroll, pk=pk)
-	if request.method == 'POST':
-		form = PayrollForm(request.POST, instance=payroll)
-		if form.is_valid():
-			payroll = form.save()
-			messages.success(request, f'Bảng lương {payroll.name} đã được cập nhật')
-			return redirect('payroll_detail', pk=payroll.pk)
-	else:
-		form = PayrollForm(instance=payroll)
+    """Cập nhật bảng lương"""
+    payroll = get_object_or_404(Payroll, pk=pk)
 
-	context = {
-		'form': form,
-		'payroll': payroll,
-		'title': 'Cập nhật bảng lương',
-	}
-	return render(request, 'payroll/payroll_form.html', context)
+
+
+
+    if request.method == 'POST':
+        form = PayrollForm(request.POST, instance=payroll)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Bảng lương "{payroll.name}" đã được cập nhật')
+            return redirect('payroll_detail', pk=payroll.pk)
+    else:
+        form = PayrollForm(instance=payroll)
+
+    context = {
+        'form': form,
+        'payroll': payroll,
+        'title': 'Cập nhật bảng lương',
+
+    }
+
+    return render(request, 'payroll/payroll_form.html', context)
 
 
 @login_required
-def payroll_approve(request, pk):
+def payroll_employee_detail(request, payroll_id, detail_id):
+	"""Xem chi tiết lương của nhân viên"""
+	payroll = get_object_or_404(Payroll, pk=payroll_id)
+	detail = get_object_or_404(PayrollDetail, pk=detail_id, payroll=payroll)
+
+	# Lấy danh sách khấu trừ
+	deductions = PayrollDeduction.objects.filter(payroll_detail=detail)
+
+	# Lấy danh sách phụ cấp
+	allowances = PayrollAllowance.objects.filter(payroll_detail=detail)
+
+	context = {
+		'payroll': payroll,
+		'detail': detail,
+		'deductions': deductions,
+		'allowances': allowances,
+	}
+
+	return render(request, 'payroll/payroll_employee_detail.html', context)
+
+
+@login_required
+def calculate_payroll(request):
+	from .forms import CalculatePayrollForm
+
+	if request.method == 'POST':
+		form = CalculatePayrollForm(request.POST)
+		if form.is_valid():
+			attendance_summary = form.cleaned_data['attendance_summary']
+			payroll_name = form.cleaned_data['payroll_name']
+
+			# Tạo bảng lương mới
+			payroll = Payroll.objects.create(
+				user=request.user, # ✅ thêm dòng này
+				name=payroll_name,
+				month=attendance_summary.start_date.month if hasattr(attendance_summary,
+				                                                     'start_date') and attendance_summary.start_date else timezone.now().month,
+				year=attendance_summary.start_date.year if hasattr(attendance_summary,
+				                                                   'start_date') and attendance_summary.start_date else timezone.now().year,
+				position=attendance_summary.position,
+				status='draft'
+			)
+
+			# Xử lý dữ liệu từ bảng chấm công
+			process_attendance_data(payroll, attendance_summary)
+
+			# Đánh dấu bảng chấm công đã được chuyển tính lương
+			try:
+				attendance_summary.transferred = True
+				attendance_summary.save()
+			except AttributeError:
+				pass
+
+			messages.success(request, 'Đã tính lương thành công từ bảng chấm công.')
+			return redirect('payroll_detail', pk=payroll.pk)
+	else:
+		form = CalculatePayrollForm()
+
+	return render(request, 'payroll/calculate_payroll.html', {
+		'form': form,
+		'title': 'Tính lương'
+	})
+
+
+@login_required
+def export_payroll(request, pk):
+	"""Xuất bảng lương ra file Excel"""
 	payroll = get_object_or_404(Payroll, pk=pk)
-	if payroll.status in ['draft', 'processing']:
-		payroll.approve(request.user.username)
-		messages.success(request, f'Bảng lương {payroll.name} đã được duyệt')
+
+	# Xử lý xuất file Excel (sẽ triển khai sau)
+	messages.info(request, 'Chức năng xuất bảng lương đang được phát triển')
 	return redirect('payroll_detail', pk=payroll.pk)
 
 
 @login_required
-def payroll_detail_create(request, payroll_id):
-	payroll = get_object_or_404(Payroll, pk=payroll_id)
+def transfer_to_payroll(request, attendance_summary_id):
+	"""Chuyển dữ liệu từ bảng chấm công tổng hợp sang tính lương"""
+	attendance_summary = get_object_or_404(AttendanceSummary, pk=attendance_summary_id)
+
+	# Kiểm tra xem bảng chấm công đã được chuyển sang tính lương chưa
+	if attendance_summary.transferred:
+		messages.warning(request, 'Bảng chấm công này đã được chuyển sang tính lương trước đó')
+		return redirect('attendance_summary_detail', pk=attendance_summary_id)
+
 	if request.method == 'POST':
-		form = PayrollDetailForm(request.POST)
-		if form.is_valid():
-			detail = form.save(commit=False)
-			detail.payroll = payroll
-			detail.save()
-			messages.success(request,
-			                 f'Dữ liệu lương cho nhân viên {detail.employee.full_name} đã được thêm thành công')
-			return redirect('payroll_detail', pk=payroll.pk)
-	else:
-		form = PayrollDetailForm()
+		# Tạo tên bảng lương mặc định
+		month = attendance_summary.start_date.month if attendance_summary.start_date else timezone.now().month
+		year = attendance_summary.start_date.year if attendance_summary.start_date else timezone.now().year
+		payroll_name = f"Bảng lương tháng {month}/{year} - {attendance_summary.name}"
 
-	context = {
-		'form': form,
-		'payroll': payroll,
-		'title': 'Thêm dữ liệu lương nhân viên',
-	}
-	return render(request, 'payroll/payroll_detail_form.html', context)
+		# Tạo bảng lương mới
+		payroll = Payroll.objects.create(
+			user=request.user,  # ✅ thêm dòng này,
+			name=payroll_name,
+			month=month,
+			year=year,
+			position=attendance_summary.position,
+			attendance_summary=attendance_summary,
+			status='draft'
+		)
 
+		# Lấy danh sách nhân viên từ bảng chấm công
+		employee_attendances = attendance_summary.employee_attendances.all()
 
-@login_required
-def payroll_detail_update(request, pk):
-	detail = get_object_or_404(PayrollDetail, pk=pk)
-	if request.method == 'POST':
-		form = PayrollDetailForm(request.POST, instance=detail)
-		if form.is_valid():
-			detail = form.save()
-			messages.success(request, f'Dữ liệu lương cho nhân viên {detail.employee.full_name} đã được cập nhật')
-			return redirect('payroll_detail', pk=detail.payroll.pk)
-	else:
-		form = PayrollDetailForm(instance=detail)
+		# Tính lương cho từng nhân viên
+		for employee_attendance in employee_attendances:
+			employee = employee_attendance.employee
 
-	context = {
-		'form': form,
-		'detail': detail,
-		'payroll': detail.payroll,
-		'title': 'Cập nhật dữ liệu lương nhân viên',
-	}
-	return render(request, 'payroll/payroll_detail_form.html', context)
+			# Lấy số công chuẩn từ bảng chấm công
+			standard_workdays = attendance_summary.standard_workdays
 
+			# Lấy số công thực tế và số ngày nghỉ không lương
+			actual_workdays = employee_attendance.workdays
+			unpaid_leave = employee_attendance.unpaid_leave
 
-@login_required
-def payroll_calculate(request, pk):
-	payroll = get_object_or_404(Payroll, pk=pk)
+			# Tính tỷ lệ hưởng lương
+			attendance_ratio = employee_attendance.total_paid_days / standard_workdays if standard_workdays > 0 else 0
 
-	# Lấy dữ liệu từ PayrollData đã được duyệt
-	approved_data = PayrollData.objects.filter(period=payroll.period, status='approved')
+			# Lấy lương cơ bản từ thông tin nhân viên
+			basic_salary = employee.basic_salary or 0
 
-	# Xóa dữ liệu cũ nếu có
-	PayrollDetail.objects.filter(payroll=payroll).delete()
+			# Tính lương theo ngày công
+			gross_salary = int(basic_salary * attendance_ratio)
 
-	# Tạo dữ liệu mới từ PayrollDataDetail
-	for data in approved_data:
-		for detail in data.details.all():
-			# Tính toán các giá trị
-			gross_salary = detail.basic_salary + detail.allowance + detail.bonus
+			# Tính các khoản khấu trừ (giả định 10% tổng thu nhập)
+			deductions_amount = int(gross_salary * Decimal('0.1'))
 
-			# Tính thuế TNCN (giả định)
-			taxable_income = gross_salary - insurance - 11000000  # Giảm trừ gia cảnh
-			if taxable_income <= 0:
-				tax = 0
-			elif taxable_income <= 5000000:
-				tax = taxable_income * 0.05
-			elif taxable_income <= 10000000:
-				tax = 250000 + (taxable_income - 5000000) * 0.1
-			elif taxable_income <= 18000000:
-				tax = 750000 + (taxable_income - 10000000) * 0.15
-			elif taxable_income <= 32000000:
-				tax = 1950000 + (taxable_income - 18000000) * 0.2
-			elif taxable_income <= 52000000:
-				tax = 4750000 + (taxable_income - 32000000) * 0.25
-			elif taxable_income <= 80000000:
-				tax = 9750000 + (taxable_income - 52000000) * 0.3
-			else:
-				tax = 18150000 + (taxable_income - 80000000) * 0.35
+			# Tính lương thực lĩnh
+			net_salary = gross_salary - deductions_amount
 
-			net_salary = gross_salary - tax - detail.deduction
-
-			# Tạo PayrollDetail mới
-			PayrollDetail.objects.create(
+			# Tạo chi tiết lương
+			payroll_detail = PayrollDetail.objects.create(
 				payroll=payroll,
-				employee=detail.employee,
-				working_days=detail.working_days,
-				overtime_hours=detail.overtime_hours,
-				leave_days=detail.leave_days,
-				basic_salary=detail.basic_salary,
-				allowance=detail.allowance,
-				bonus=detail.bonus,
-				deduction=detail.deduction,
+				employee=employee,
+				basic_salary=basic_salary,
+				attendance_ratio=attendance_ratio,
+				standard_workdays=standard_workdays,
+				actual_workdays=actual_workdays,
+				unpaid_leave=unpaid_leave,
 				gross_salary=gross_salary,
-				tax=tax,
+				deduction_amount=deductions_amount,
 				net_salary=net_salary
 			)
 
-	# Cập nhật trạng thái bảng lương
-	payroll.status = 'processing'
-	payroll.save()
 
-	messages.success(request, f'Đã tính toán lương cho {payroll.name}')
-	return redirect('payroll_detail', pk=payroll.pk)
+
+		# Đánh dấu bảng chấm công đã được chuyển tính lương
+		attendance_summary.transferred = True
+		attendance_summary.save()
+
+		messages.success(request,
+		                 f'Đã chuyển dữ liệu từ bảng chấm công "{attendance_summary.name}" sang bảng lương thành công')
+		return redirect('payroll_detail', pk=payroll.pk)
+
+	context = {
+		'attendance_summary': attendance_summary,
+	}
+
+	return render(request, 'payroll/transfer_to_payroll.html', context)
 
 
 @login_required
-def payroll_export_csv(request, pk):
+def disable_payroll(request, pk):
+    """Vô hiệu hóa bảng lương"""
+    payroll = get_object_or_404(Payroll, pk=pk)
+
+
+
+    if request.method == 'POST':
+        payroll.status = 'disabled'
+        payroll.save()
+        messages.success(request, f'Bảng lương "{payroll.name}" đã được vô hiệu hóa')
+        return redirect('payroll_list')
+
+    context = {
+        'payroll': payroll,
+    }
+
+    return render(request, 'payroll/payroll_disable.html', context)
+
+
+@login_required
+def export_payroll_excel(request, pk):
+	"""Xuất bảng lương ra file Excel"""
 	payroll = get_object_or_404(Payroll, pk=pk)
-	details = payroll.details.all()
+	details = PayrollDetail.objects.filter(payroll=payroll)
 
-	response = HttpResponse(content_type='text/csv')
-	response['Content-Disposition'] = f'attachment; filename="{payroll.code}_{payroll.name}.csv"'
+	# Tạo file Excel trong bộ nhớ
+	output = BytesIO()
+	workbook = xlsxwriter.Workbook(output)
+	worksheet = workbook.add_worksheet("Bảng lương")
 
-	writer = csv.writer(response)
-	writer.writerow([
-		'Mã NV', 'Họ và tên', 'Phòng ban', 'Vị trí',
-		'Ngày công', 'Giờ làm thêm', 'Ngày nghỉ',
-		'Lương cơ bản', 'Phụ cấp', 'Thưởng', 'Khấu trừ',
-		'Tổng thu nhập', 'Bảo hiểm', 'Thuế TNCN', 'Thực lãnh'
-	])
+	# Định dạng
+	header_format = workbook.add_format({
+		'bold': True,
+		'bg_color': '#2980b9',
+		'color': 'white',
+		'align': 'center',
+		'valign': 'vcenter',
+		'border': 1
+	})
 
-	for detail in details:
-		writer.writerow([
-			detail.employee.code,
-			detail.employee.full_name,
-			detail.employee.department.name if detail.employee.department else '',
-			detail.employee.position.name if detail.employee.position else '',
-			detail.working_days,
-			detail.overtime_hours,
-			detail.leave_days,
-			detail.basic_salary,
-			detail.allowance,
-			detail.bonus,
-			detail.deduction,
-			detail.gross_salary,
-			detail.tax,
-			detail.net_salary
-		])
+	cell_format = workbook.add_format({
+		'border': 1,
+		'align': 'left',
+		'valign': 'vcenter'
+	})
+
+	number_format = workbook.add_format({
+		'border': 1,
+		'align': 'right',
+		'valign': 'vcenter',
+		'num_format': '#,##0'
+	})
+
+	percent_format = workbook.add_format({
+		'border': 1,
+		'align': 'right',
+		'valign': 'vcenter',
+		'num_format': '0.00%'
+	})
+
+	# Thiết lập độ rộng cột
+	worksheet.set_column('A:A', 5)  # STT
+	worksheet.set_column('B:B', 30)  # Họ tên
+	worksheet.set_column('C:C', 15)  # Mã nhân viên
+	worksheet.set_column('D:D', 15)  # Lương cơ bản
+	worksheet.set_column('E:E', 15)  # Số công chuẩn
+	worksheet.set_column('F:F', 15)  # Số công thực tế
+	worksheet.set_column('G:G', 15)  # Nghỉ không lương
+	worksheet.set_column('H:H', 15)  # Tỷ lệ hưởng lương
+	worksheet.set_column('I:I', 15)  # Tổng thu nhập
+	worksheet.set_column('J:J', 15)  # Khấu trừ
+	worksheet.set_column('K:K', 15)  # Thực lĩnh
+
+	# Tiêu đề bảng lương
+	worksheet.merge_range('A1:K1', f"BẢNG LƯƠNG: {payroll.name}", header_format)
+	worksheet.merge_range('A2:K2', f"Tháng {payroll.month}/{payroll.year} - {payroll.position.name}", header_format)
+
+	# Tiêu đề cột
+	headers = [
+		"STT", "Họ tên", "Mã NV", "Lương cơ bản", "Công chuẩn",
+		"Công thực tế", "Nghỉ không lương", "Tỷ lệ hưởng",
+		"Tổng thu nhập", "Khấu trừ", "Thực lĩnh"
+	]
+
+	for col, header in enumerate(headers):
+		worksheet.write(3, col, header, header_format)
+
+	# Dữ liệu
+	row = 4
+	for i, detail in enumerate(details, 1):
+		worksheet.write(row, 0, i, cell_format)  # STT
+		worksheet.write(row, 1, detail.employee.full_name, cell_format)  # Họ tên
+		worksheet.write(row, 2, detail.employee.employee_id, cell_format)  # Mã NV
+		worksheet.write(row, 3, detail.basic_salary, number_format)  # Lương cơ bản
+		worksheet.write(row, 4, detail.standard_workdays, cell_format)  # Công chuẩn
+		worksheet.write(row, 5, detail.actual_workdays, cell_format)  # Công thực tế
+		worksheet.write(row, 6, detail.unpaid_leave, cell_format)  # Nghỉ không lương
+		worksheet.write(row, 7, detail.attendance_ratio, percent_format)  # Tỷ lệ hưởng
+		worksheet.write(row, 8, detail.gross_salary, number_format)  # Tổng thu nhập
+		worksheet.write(row, 9, detail.deduction_amount, number_format)  # Khấu trừ
+		worksheet.write(row, 10, detail.net_salary, number_format)  # Thực lĩnh
+		row += 1
+
+	# Tổng cộng
+	worksheet.merge_range(f'A{row + 1}:G{row + 1}', "TỔNG CỘNG", header_format)
+	worksheet.write(row + 1, 8, f'=SUM(I5:I{row})', number_format)
+	worksheet.write(row + 1, 9, f'=SUM(J5:J{row})', number_format)
+	worksheet.write(row + 1, 10, f'=SUM(K5:K{row})', number_format)
+
+	# Thông tin người tạo
+	worksheet.merge_range(f'A{row + 3}:K{row + 3}', f"Ngày xuất: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+	                      cell_format)
+
+	workbook.close()
+
+	# Thiết lập response
+	output.seek(0)
+	filename = f"Bang_luong_{payroll.month}_{payroll.year}_{payroll.position.name}.xlsx"
+
+	response = HttpResponse(
+		output,
+		content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+	)
+	response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
 	return response
 
 
-# Payroll Payment Views
 @login_required
-def payroll_payment_list(request):
-	form = PayrollPaymentFilterForm(request.GET)
-	payments = PayrollPayment.objects.all().order_by('-payment_date')
+def payroll_employee_detail(request, payroll_id, detail_id):
+	"""Xem chi tiết lương của nhân viên"""
+	payroll = get_object_or_404(Payroll, pk=payroll_id)
+	detail = get_object_or_404(PayrollDetail, pk=detail_id, payroll=payroll)
 
-	if form.is_valid():
-		payroll = form.cleaned_data.get('payroll')
-		status = form.cleaned_data.get('status')
-		payment_method = form.cleaned_data.get('payment_method')
-		search = form.cleaned_data.get('search')
+	# Lấy danh sách khấu trừ
+	deductions = PayrollDeduction.objects.filter(payroll_detail=detail)
 
-		if payroll:
-			payments = payments.filter(payroll=payroll)
-
-		if status:
-			payments = payments.filter(status=status)
-
-		if payment_method:
-			payments = payments.filter(payment_method=payment_method)
-
-		if search:
-			payments = payments.filter(
-				Q(code__icontains=search) |
-				Q(payroll__name__icontains=search)
-			)
-
-	paginator = Paginator(payments, 10)
-	page_number = request.GET.get('page')
-	page_obj = paginator.get_page(page_number)
+	# Lấy danh sách phụ cấp
+	allowances = PayrollAllowance.objects.filter(payroll_detail=detail)
 
 	context = {
-		'page_obj': page_obj,
-		'form': form,
+		'payroll': payroll,
+		'detail': detail,
+		'deductions': deductions,
+		'allowances': allowances,
 	}
-	return render(request, 'payroll/payment_list.html', context)
 
-
-@login_required
-def payroll_payment_detail(request, pk):
-	payment = get_object_or_404(PayrollPayment, pk=pk)
-	details = payment.details.all()
-
-	context = {
-		'payment': payment,
-		'details': details,
-	}
-	return render(request, 'payroll/payment_detail.html', context)
-
+	return render(request, 'payroll/payroll_employee_detail.html', context)
 
 @login_required
-@login_required
-def payroll_payment_create(request, payroll_id=None):
-    payroll = None
-    if payroll_id:
-        payroll = get_object_or_404(Payroll, pk=payroll_id)
+def activate_payroll(request, pk):
+    """Kích hoạt bảng lương đã vô hiệu hóa"""
+    payroll = get_object_or_404(Payroll, pk=pk)
+
+
+
+
 
     if request.method == 'POST':
-        form = PayrollPaymentForm(request.POST)
-        if form.is_valid():
-            payment = form.save(commit=False)
-            payment.created_by = request.user.username
-            payment.save()
+        # Đặt lại trạng thái là nháp
+        payroll.status = 'draft'
+        payroll.save()
+        messages.success(request, f'Bảng lương "{payroll.name}" đã được kích hoạt lại')
+        return redirect('payroll_detail', pk=payroll.pk)
 
-            # Tạo chi tiết thanh toán cho từng nhân viên
-            if not payroll:
-                payroll = payment.payroll
+    context = {
+        'payroll': payroll,
 
-            for detail in payroll.details.all():
-                PayrollPaymentDetail.objects.create(
-                    payment=payment,
-                    employee=detail.employee,
-                    amount=detail.net_salary,
-                    status='pending'
-                )
+    }
 
-            messages.success(request, f'Thanh toán lương {payment.code} đã được tạo thành công')
-            return redirect('payroll_payment_detail', pk=payment.pk)
-    else:
-        initial = {}
-        if payroll:
-            # Tính tổng lương thực lãnh
-            total_net = payroll.details.aggregate(total=Sum('net_salary'))['total'] or 0
-            initial = {
-                'payroll': payroll,
-                'total_amount': total_net,
-                'payment_date': datetime.date.today()
-            }
-        form = PayrollPaymentForm(initial=initial)  # Khởi tạo form với dữ liệu ban đầu (nếu có)
+    return render(request, 'payroll/payroll_activate.html', context)
 
-    return render(request, 'payroll/payment_create.html', {'form': form})
+@login_required
+def export_payroll_excel(request, pk):
+	"""Xuất bảng lương ra file Excel"""
+	payroll = get_object_or_404(Payroll, pk=pk)
+	details = PayrollDetail.objects.filter(payroll=payroll)
+
+	# Tạo file Excel trong bộ nhớ
+	output = BytesIO()
+	workbook = xlsxwriter.Workbook(output)
+	worksheet = workbook.add_worksheet("Bảng lương")
+
+	# Định dạng
+	header_format = workbook.add_format({
+		'bold': True,
+		'bg_color': '#2980b9',
+		'color': 'white',
+		'align': 'center',
+		'valign': 'vcenter',
+		'border': 1
+	})
+
+	cell_format = workbook.add_format({
+		'border': 1,
+		'align': 'left',
+		'valign': 'vcenter'
+	})
+
+	number_format = workbook.add_format({
+		'border': 1,
+		'align': 'right',
+		'valign': 'vcenter',
+		'num_format': '#,##0'
+	})
+
+	percent_format = workbook.add_format({
+		'border': 1,
+		'align': 'right',
+		'valign': 'vcenter',
+		'num_format': '0.00%'
+	})
+
+	# Thiết lập độ rộng cột
+	worksheet.set_column('A:A', 5)  # STT
+	worksheet.set_column('B:B', 30)  # Họ tên
+	worksheet.set_column('C:C', 15)  # Mã nhân viên
+	worksheet.set_column('D:D', 15)  # Lương cơ bản
+	worksheet.set_column('E:E', 15)  # Số công chuẩn
+	worksheet.set_column('F:F', 15)  # Số công thực tế
+	worksheet.set_column('G:G', 15)  # Nghỉ không lương
+	worksheet.set_column('H:H', 15)  # Tỷ lệ hưởng lương
+	worksheet.set_column('I:I', 15)  # Tổng thu nhập
+	worksheet.set_column('J:J', 15)  # Khấu trừ
+	worksheet.set_column('K:K', 15)  # Thực lĩnh
+
+	# Tiêu đề bảng lương
+	worksheet.merge_range('A1:K1', f"BẢNG LƯƠNG: {payroll.name}", header_format)
+	worksheet.merge_range('A2:K2', f"Tháng {payroll.month}/{payroll.year} - {payroll.position.name}", header_format)
+
+	# Tiêu đề cột
+	headers = [
+		"STT", "Họ tên", "Mã NV", "Lương cơ bản", "Công chuẩn",
+		"Công thực tế", "Nghỉ không lương", "Tỷ lệ hưởng",
+		"Tổng thu nhập", "Khấu trừ", "Thực lĩnh"
+	]
+
+	for col, header in enumerate(headers):
+		worksheet.write(3, col, header, header_format)
+
+	# Dữ liệu
+	row = 4
+	for i, detail in enumerate(details, 1):
+		worksheet.write(row, 0, i, cell_format)  # STT
+		worksheet.write(row, 1, detail.employee.full_name, cell_format)  # Họ tên
+
+		# Sửa lỗi: Kiểm tra xem employee có thuộc tính employee_id không
+		employee_id = getattr(detail.employee, 'employee_id', '') or getattr(detail.employee, 'id',
+		                                                                     str(detail.employee.pk))
+		worksheet.write(row, 2, employee_id, cell_format)  # Mã NV
+
+		worksheet.write(row, 3, detail.basic_salary, number_format)  # Lương cơ bản
+		worksheet.write(row, 4, detail.standard_workdays, cell_format)  # Công chuẩn
+		worksheet.write(row, 5, detail.actual_workdays, cell_format)  # Công thực tế
+		worksheet.write(row, 6, detail.unpaid_leave, cell_format)  # Nghỉ không lương
+		worksheet.write(row, 7, detail.attendance_ratio, percent_format)  # Tỷ lệ hưởng
+		worksheet.write(row, 8, detail.gross_salary, number_format)  # Tổng thu nhập
+		worksheet.write(row, 9, detail.deduction_amount, number_format)  # Khấu trừ
+		worksheet.write(row, 10, detail.net_salary, number_format)  # Thực lĩnh
+		row += 1
+
+	# Tổng cộng
+	worksheet.merge_range(f'A{row + 1}:G{row + 1}', "TỔNG CỘNG", header_format)
+	worksheet.write(row + 1, 8, f'=SUM(I5:I{row})', number_format)
+	worksheet.write(row + 1, 9, f'=SUM(J5:J{row})', number_format)
+	worksheet.write(row + 1, 10, f'=SUM(K5:K{row})', number_format)
+
+	# Thông tin người tạo
+	worksheet.merge_range(f'A{row + 3}:K{row + 3}', f"Ngày xuất: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+	                      cell_format)
+
+	workbook.close()
+
+	# Thiết lập response
+	output.seek(0)
+	filename = f"Bang_luong_{payroll.month}_{payroll.year}_{payroll.position.name}.xlsx"
+
+	response = HttpResponse(
+		output,
+		content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+	)
+	response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+	return response
+
+@login_required
+def payroll_detail(request, pk):
+    """Xem chi tiết bảng lương"""
+    payroll = get_object_or_404(Payroll, pk=pk)
+    details = PayrollDetail.objects.filter(payroll=payroll)
+
+    context = {
+        'payroll': payroll,
+        'details': details,
+    }
+
+    return render(request, 'payroll/payroll_detail.html', context)
 

@@ -1,20 +1,22 @@
 <ul class="nav flex-column">
     <li class="nav-item">
-        <a class="nav-link {% if request.path == '/cham-cong/' %}active{% endif %}" href="{% url 'attendance_dashboard' %}">
-            <i class="bi bi-speedometer2 me-2"></i>
-            Tổng quan
+        <a class="nav-link {% if request.resolver_match.url_name == 'work_shift_list' %}active{% endif %}" href="{% url 'work_shift_list' %}">
+            <i class="bi bi-clock me-2"></i> Danh sách ca làm việc
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if '/cham-cong/ca-lam-viec/' in request.path %}active{% endif %}" href="{% url 'work_shift_list' %}">
-            <i class="bi bi-clock me-2"></i>
-            Ca làm việc
+        <a class="nav-link {% if request.resolver_match.url_name == 'daily_attendance_form' %}active{% endif %}" href="{% url 'daily_attendance_form' %}">
+            <i class="bi bi-calendar-check me-2"></i> Chấm công hàng ngày
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if '/cham-cong/bang-cham-cong/' in request.path and not '/them/' in request.path %}active{% endif %}" href="{% url 'attendance_sheet_list' %}">
-            <i class="bi bi-calendar-check me-2"></i>
-            Bảng chấm công
+        <a class="nav-link {% if request.resolver_match.url_name == 'attendance_detail_list' %}active{% endif %}" href="{% url 'attendance_detail_list' %}">
+            <i class="bi bi-list-check me-2"></i> Bảng chấm công chi tiết
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.url_name == 'attendance_summary' %}active{% endif %}" href="{% url 'attendance_summary' %}">
+            <i class="bi bi-table me-2"></i> Bảng chấm công tổng hợp
         </a>
     </li>
 </ul>

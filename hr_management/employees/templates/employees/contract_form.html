@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block sidebar %}
+<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+    <div class="position-sticky pt-3">
+        {% include 'employees/sidebar.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{ title }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        {% if employee_id %}
+        <a href="{% url 'employee_detail' employee_id %}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+        {% else %}
+        <a href="{% url 'contract_list' %}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Thông tin cơ bản -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Thông tin cơ bản</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.employee|as_crispy_field }}
+                            {% if form.employee_id %}{{ form.employee_id }}{% endif %}
+                            {{ form.contract_number|as_crispy_field }}
+                            {{ form.contract_type|as_crispy_field }}
+                            {{ form.position|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.status|as_crispy_field }}
+                            {{ form.signed_date|as_crispy_field }}
+                            {{ form.start_date|as_crispy_field }}
+                            {{ form.end_date|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thông tin lương -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Thông tin lương</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.basic_salary|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.allowance|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.insurance_salary|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thông tin khác -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Thông tin khác</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.notes|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.file|as_crispy_field }}
+                            {% if form.instance.file %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                File hiện tại: {{ form.instance.file.name }}
+                                <a href="{% url 'contract_download' form.instance.id %}" class="btn btn-sm btn-primary ms-2">
+                                    <i class="bi bi-download"></i> Tải xuống
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Lưu</button>
+                {% if employee_id %}
+                <a href="{% url 'employee_detail' employee_id %}" class="btn btn-secondary">Hủy</a>
+                {% else %}
+                <a href="{% url 'contract_list' %}" class="btn btn-secondary">Hủy</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Xử lý hiển thị/ẩn trường end_date dựa trên contract_type
+        const contractTypeField = document.getElementById('id_contract_type');
+        const endDateGroup = document.getElementById('div_id_end_date');
+        
+        function updateEndDateVisibility() {
+            if (contractTypeField.value === 'indefinite') {
+                endDateGroup.style.opacity = '0.5';
+                document.getElementById('id_end_date').value = '';
+            } else {
+                endDateGroup.style.opacity = '1';
+            }
+        }
+        
+        // Chạy khi trang tải
+        updateEndDateVisibility();
+        
+        // Chạy khi thay đổi loại hợp đồng
+        contractTypeField.addEventListener('change', updateEndDateVisibility);
+    });
+</script>
+{% endblock %}

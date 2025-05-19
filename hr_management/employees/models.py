@@ -1,161 +1,124 @@
 from django.db import models
-import datetime
-from django.utils.translation import gettext_lazy as _
-from django.core.exceptions import ValidationError
-from django.utils import timezone
-from decimal import Decimal
+from django.contrib.auth.models import User
+
 
 class Position(models.Model):
-    POSITION_CHOICES = [
-        ('GV', 'Giảng viên'),
-        ('TG', 'Trợ giảng'),
-        ('NVNS', 'Nhân viên nhân sự'),
-        ('NVTV', 'Nhân viên tư vấn'),
-        ('QL', 'Quản lý'),
-    ]
+	name = models.CharField(max_length=100, verbose_name='Tên vị trí')
+	description = models.TextField(blank=True, null=True, verbose_name='Mô tả')
 
-    code = models.CharField("Mã vị trí", max_length=20, unique=True)
-    name = models.CharField("Tên vị trí công vi���c", max_length=50)
-    is_active = models.BooleanField("Đang hoạt động", default=True)
+	class Meta:
+		verbose_name = 'Vị trí công việc'
+		verbose_name_plural = 'Vị trí công việc'
+		ordering = ['name']
 
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        # Đảm bảo chỉ có 5 vị trí được định nghĩa
-        if not self.pk and Position.objects.count() >= 5:
-            raise ValidationError("Chỉ được phép có tối đa 5 vị trí công việc")
-        super().save(*args, **kwargs)
+	def __str__(self):
+		return self.name
 
 
 class Employee(models.Model):
-    GENDER_CHOICES = (
-        ('male', 'Nam'),
-        ('female', 'Nữ'),
-        ('other', 'Khác'),
-    )
+	GENDER_CHOICES = [
+		('M', 'Nam'),
+		('F', 'Nữ'),
+		('O', 'Khác'),
+	]
 
-    EDUCATION_LEVEL_CHOICES = (
-        ('high_school', 'Trung học phổ thông'),
-        ('college', 'Cao đẳng'),
-        ('university', 'Đại học'),
-        ('master', 'Thạc sĩ'),
-        ('phd', 'Tiến sĩ'),
-    )
+	EDUCATION_LEVEL_CHOICES = [
+		('high_school', 'Trung học phổ thông'),
+		('college', 'Cao đẳng'),
+		('university', 'Đại học'),
+		('master', 'Thạc sĩ'),
+		('phd', 'Tiến sĩ'),
+		('other', 'Khác'),
+	]
 
+	# Thông tin cơ bản
+	code = models.CharField(max_length=20, unique=True, verbose_name='Mã nhân viên')
+	full_name = models.CharField(max_length=100, verbose_name='Họ và tên', blank=True)
+	first_name = models.CharField(max_length=50, verbose_name='Tên')
+	last_name = models.CharField(max_length=50, verbose_name='Họ')
+	gender = models.CharField(max_length=1, choices=GENDER_CHOICES, verbose_name='Giới tính')
+	date_of_birth = models.DateField(verbose_name='Ngày sinh')
+	id_number = models.CharField(max_length=20, blank=True, null=True, verbose_name='Số CMND/CCCD')
 
-    EMPLOYMENT_TYPE_CHOICES = (
-        ('full_time', 'Toàn thời gian'),
-        ('part_time', 'Bán thời gian'),
-        ('intern', 'Thực tập'),
+	# Thông tin liên hệ
+	phone = models.CharField(max_length=15, verbose_name='Số điện thoại')
+	email = models.EmailField(blank=True, null=True, verbose_name='Email')
+	address = models.TextField(blank=True, null=True, verbose_name='Địa chỉ')
 
-    )
+	# Thông tin công việc
+	position = models.ForeignKey(Position, on_delete=models.PROTECT, related_name='employees', verbose_name='Vị trí')
+	join_date = models.DateField(verbose_name='Ngày vào làm')
+	is_active = models.BooleanField(default=True, verbose_name='Đang làm việc')
 
-    # EMPLOYMENT_TYPE_CHOICES = [
-    #     ('official', 'Chính thức'),
-    #     ('probation', 'Thử việc'),
-    #     ('intern', 'Học việc'),
-    #     ('temporary', 'Tạm thời'),
-    #     ('other', 'Khác'),
-    # ]
+	# Thông tin học vấn
+	education_level = models.CharField(max_length=20, choices=EDUCATION_LEVEL_CHOICES, blank=True, null=True,
+	                                   verbose_name='Trình độ học vấn')
+	degree = models.CharField(max_length=100, blank=True, null=True, verbose_name='Bằng cấp')
+	major = models.CharField(max_length=100, blank=True, null=True, verbose_name='Chuyên ngành')
 
-    LABOR_STATUS_CHOICES = (
-        ('working', 'Đang làm việc'),
-        ('resigned', 'Đã nghỉ việc'),
-        ('maternity_leave', 'Nghỉ thai sản'),
-        ('on_leave', 'Đang nghỉ phép'),
-    )
+	# Thông tin lương
+	basic_salary = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name='Lương cơ bản')
 
+	# Thông tin khác
+	photo = models.ImageField(upload_to='employee_photos/', blank=True, null=True, verbose_name='Ảnh đại diện')
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
 
+	class Meta:
+		verbose_name = 'Nhân viên'
+		verbose_name_plural = 'Nhân viên'
+		ordering = ['last_name', 'first_name']
 
-    IS_ACTIVE_CHOICES = [
-        ('active', 'Đang làm việc'),
-        ('inactive', 'Đã nghỉ việc'),
-    ]
-
-
-    # Thông tin cơ bản
-    code = models.CharField(_("Mã nhân viên"), max_length=20, unique=True)
-    full_name = models.CharField(_("Họ và tên"), max_length=100, blank=True)
-    gender = models.CharField(_("Giới tính"), max_length=10, choices=GENDER_CHOICES)
-    date_of_birth = models.DateField(_("Ngày sinh"))
-    id_number = models.CharField(_("Số CMND/CCCD"), max_length=20, blank=True, null=True)
-
-    # Thông tin liên hệ
-    phone = models.CharField(_("Số điện thoại"), max_length=20)
-    email = models.EmailField(_("Email"), blank=True, null=True)
-    address = models.CharField(_("Địa chỉ"), max_length=255, blank=True, null=True)
-
-    # Thông tin công việc
-    position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True,
-                                 verbose_name="Vị trí công việc")
-    join_date = models.DateField(_("Ngày vào làm"))
-    is_active = models.CharField("Trạng thái làm việc", max_length=10, choices=IS_ACTIVE_CHOICES, default='active')
-
-    # Ảnh đại diện
-    photo = models.ImageField(_("Ảnh"), upload_to='employees/', blank=True, null=True)
-
-    employment_type = models.CharField(_("Loại công việc"), max_length=20, choices=EMPLOYMENT_TYPE_CHOICES, blank=True,
-                                       null=True)
-
-    # Thông tin lương và thuế
-    basic_salary = models.DecimalField("Lương cơ bản", max_digits=12, decimal_places=0, default=0, null=True,
-                                       blank=True)
-    salary_rate = models.DecimalField("Tỉ lệ hưởng lương", max_digits=5, decimal_places=2, default=100, null=True,
-                                      blank=True)
+	def save(self, *args, **kwargs):
+		# Tự động cập nhật full_name khi lưu
+		self.full_name = f"{self.last_name} {self.first_name}"
+		super().save(*args, **kwargs)
 
 
+class Contract(models.Model):
+	CONTRACT_TYPE_CHOICES = [
+		('probation', 'Thử việc'),
+		('definite', 'Xác định thời hạn'),
+		('indefinite', 'Không xác định thời hạn'),
+		('seasonal', 'Thời vụ'),
+		('project', 'Theo dự án'),
+	]
 
-    # Thông tin bằng cấp
-    education_level = models.CharField(_("Trình độ học vấn"), max_length=20, choices=EDUCATION_LEVEL_CHOICES,
-                                       blank=True, null=True)
-    degree = models.CharField(_("Bằng cấp"), max_length=100, blank=True, null=True)
-    major = models.CharField(_("Chuyên ngành"), max_length=100, blank=True, null=True)
+	STATUS_CHOICES = [
+		('active', 'Đang hiệu lực'),
+		('expired', 'Đã hết hạn'),
+		('terminated', 'Đã chấm dứt'),
+		('pending', 'Chờ ký kết'),
+	]
 
+	employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='contracts', verbose_name='Nhân viên')
+	contract_number = models.CharField(max_length=50, unique=True, verbose_name='Số hợp đồng')
+	contract_type = models.CharField(max_length=20, choices=CONTRACT_TYPE_CHOICES, verbose_name='Loại hợp đồng')
+	position = models.ForeignKey(Position, on_delete=models.PROTECT, verbose_name='Vị trí công việc')
+	start_date = models.DateField(verbose_name='Ngày bắt đầu')
+	end_date = models.DateField(null=True, blank=True, verbose_name='Ngày kết thúc')
+	basic_salary = models.DecimalField(max_digits=12, decimal_places=0, verbose_name='Lương cơ bản')
+	allowance = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name='Phụ cấp')
+	insurance_salary = models.DecimalField(max_digits=12, decimal_places=0, default=0,
+	                                       verbose_name='Lương đóng bảo hiểm')
+	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', verbose_name='Trạng thái')
+	signed_date = models.DateField(verbose_name='Ngày ký')
+	notes = models.TextField(blank=True, null=True, verbose_name='Ghi chú')
+	file = models.FileField(upload_to='contracts/', blank=True, null=True, verbose_name='File hợp đồng')
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
 
-    # Thông tin bổ sung mới
-    dependents = models.PositiveIntegerField(_("Số người phụ thuộc"), default=0)
-    labor_status = models.CharField(_("Tình trạng lao động"), max_length=20, choices=LABOR_STATUS_CHOICES, default='working')
-    personal_tax = models.DecimalField("Thuế TNCN (%)", max_digits=5, decimal_places=2, default=0, null=True,
-                                       blank=True)
-    deduction = models.DecimalField("Khấu trừ", max_digits=12, decimal_places=0, default=0, null=True, blank=True)
-    performance_bonus = models.DecimalField("Thưởng hiệu suất", max_digits=12, decimal_places=0, default=0, null=True,
-                                            blank=True)
+	class Meta:
+		verbose_name = 'Hợp đồng'
+		verbose_name_plural = 'Hợp đồng'
+		ordering = ['-start_date']
 
-    # Thời gian tạo và cập nhật
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+	def __str__(self):
+		return f"{self.contract_number} - {self.employee.full_name}"
 
-    def __str__(self):
-        return f"{self.code} - {self.full_name}"
-
-    def clean(self):
-        # Kiểm tra ngày sinh không được lớn hơn ngày hiện tại
-        if self.date_of_birth and self.date_of_birth > timezone.now().date():
-            raise ValidationError({'date_of_birth': 'Ngày sinh không thể lớn hơn ngày hiện tại'})
-
-        # Kiểm tra ngày vào làm không được nhỏ hơn ngày sinh
-        if self.date_of_birth and self.join_date and self.join_date < self.date_of_birth:
-            raise ValidationError({'join_date': 'Ngày vào làm không thể nhỏ hơn ngày sinh'})
-
-class WorkHistory(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='work_histories')
-    company = models.CharField("Công ty", max_length=100)
-    position = models.CharField("Vị trí", max_length=100)
-    start_date = models.DateField("Ngày bắt đầu")
-    end_date = models.DateField("Ngày kết thúc", null=True, blank=True)
-    description = models.TextField("Mô tả công việc", blank=True, null=True)
-
-    def __str__(self):
-        return f"{self.employee.full_name} - {self.company}"
-
-
-class SalaryHistory(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='salary_histories')
-    effective_date = models.DateField("Ngày hiệu lực")
-    old_salary = models.DecimalField("Lương cũ", max_digits=12, decimal_places=0)
-    new_salary = models.DecimalField("Lương mới", max_digits=12, decimal_places=0)
-    reason = models.TextField("Lý do thay đổi")
-
-    def __str__(self):
-        return f"{self.employee.full_name} - {self.effective_date}"
+	def save(self, *args, **kwargs):
+		# Cập nhật lương cơ bản của nhân viên khi hợp đồng có hiệu lực
+		if self.status == 'active':
+			self.employee.basic_salary = self.basic_salary
+			self.employee.save()
+		super().save(*args, **kwargs)

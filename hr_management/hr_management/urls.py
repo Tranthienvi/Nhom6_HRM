@@ -13,4 +13,12 @@ urlpatterns = [
         path('api/', include('employees.urls_api')),
     path('tien-luong/', include('payroll.urls')),
     path('attendance/', include('attendance.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+    path('admin/', admin.site.urls),
+    path('employees/', include('employees.urls')),
+    path('attendance/', include('attendance.urls')),
+    path('payroll/', include('payroll.urls')),
+    path('accounts/', include('django.contrib.auth.urls')),
+]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

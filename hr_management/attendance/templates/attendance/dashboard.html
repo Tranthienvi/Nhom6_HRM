@@ -1,94 +1,11 @@
+
+
 {% extends 'base.html' %}
-{% load static %}
 
-{% block title %}Quản lý chấm công{% endblock %}
-
-{% block sidebar %}
-<div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-    <div class="position-sticky pt-3">
-        {% include 'attendance/sidebar.html' %}
-    </div>
-</div>
+{% block title %}
+Dashboard Chấm công - Ms.Vy English
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Quản lý chấm công</h1>
-</div>
-
-<div class="row">
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Ca làm việc</h5>
-                <a href="{% url 'work_shift_list' %}" class="btn btn-sm btn-primary">Xem tất cả</a>
-            </div>
-            <div class="card-body">
-                <p>Quản lý các ca làm việc trong hệ thống.</p>
-                <a href="{% url 'work_shift_create' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-plus"></i> Thêm ca làm việc
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Bảng chấm công</h5>
-                <a href="{% url 'attendance_sheet_list' %}" class="btn btn-sm btn-primary">Xem tất cả</a>
-            </div>
-            <div class="card-body">
-                <p>Quản lý bảng chấm công và dữ liệu chấm công.</p>
-                <a href="{% url 'attendance_sheet_create' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-plus"></i> Tạo bảng chấm công
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">Bảng chấm công gần đây</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Tên bảng chấm công</th>
-                        <th>Tháng/Năm</th>
-                        <th>Vị trí áp dụng</th>
-                        <th>Ngày tạo</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sheet in attendance_sheets %}
-                    <tr>
-                        <td>{{ sheet.name }}</td>
-                        <td>{{ sheet.month }}/{{ sheet.year }}</td>
-                        <td>
-                            {% for position in sheet.positions.all %}
-                            <span class="badge bg-info">{{ position.name }}</span>
-                            {% endfor %}
-                        </td>
-                        <td>{{ sheet.created_at|date:"d/m/Y H:i" }}</td>
-                        <td>
-                            <a href="{% url 'attendance_sheet_detail' sheet.id %}" class="btn btn-sm btn-info">
-                                <i class="bi bi-eye"></i> Xem
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">Không có bảng chấm công nào.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+<!-- Redirected to work_shift_list -->
 {% endblock %}

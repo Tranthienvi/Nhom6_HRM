@@ -48,16 +48,13 @@ def employee_search(request):
 
     results = []
     for employee in employees:
-        department_name = ""
-        if employee.position and employee.position.department:
-            department_name = employee.position.department.name
 
         results.append({
             'id': employee.id,
             'code': employee.code,
             'full_name': employee.full_name,
             'position': employee.position.name if employee.position else '',
-            'department': department_name
+
         })
 
     return JsonResponse(results, safe=False)
